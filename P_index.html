@@ -134,18 +134,16 @@
         refreshDashboard(); 
       }
 
-      // 載入儀表板資料 (呼叫 API)
+     // 載入儀表板資料 (呼叫 API)
       async function refreshDashboard() {
-        // 第一層檢查：如果一開始就不在首頁，就不發送請求
+        // 第一層保護：如果一開始就不在首頁，就不發送請求
         if (!document.getElementById('val-walk-in')) return; 
 
         try {
           const response = await fetch(`${GAS_API_URL}?action=getDashboardData`);
           const data = await response.json();
           
-          // ★★★ 第二層檢查 (新增) ★★★
-          // 因為 fetch 需要時間，等資料回來時，使用者可能已經切換到「預約單」了！
-          // 所以在這裡要再次確認儀表板元素是否還活在畫面上
+          // ★★★ 第二層保護：因為 fetch 需要時間，等資料回來時，畫面可能已經切換了！ ★★★
           if (!document.getElementById('val-walk-in')) return;
           
           if(!data || data.error) {
@@ -233,4 +231,5 @@
     </script>
   </body>
 </html>
+
 
