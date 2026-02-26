@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      :root { --primary-color: #0d566f; --bg-light: #f8fafc; --border-color: #e2e8f0; }
+      body { background-color: #f1f5f9; font-family: 'Noto Sans TC', sans-serif; color: #334155; padding: 15px; }
+      .res-wrap { background: #fff; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 900px; margin: 0 auto; }
+      
+      .form-control, .form-select, .btn { height: 60px !important; font-size: 1.15rem !important; border-radius: 12px !important; }
+      .search-section { background: var(--bg-light); padding: 25px; border-radius: 15px; margin-bottom: 25px; border: 1px solid var(--border-color); }
+      .search-box-wrap { display: flex; flex-direction: column; gap: 12px; }
+      .search-label { font-weight: 700; color: #475569; display: flex; align-items: center; min-height: 30px; font-size: 1.1rem; }
+      
+      .input-group .btn { border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; border-left: 1px solid #fff !important; }
+      .input-group .form-control { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+
+      .field-label { font-weight: 700; color: var(--primary-color); margin-top: 35px; margin-bottom: 15px; font-size: 1.25rem; border-left: 6px solid var(--primary-color); padding-left: 15px; }
+      .status-badge { padding: 12px 24px; border-radius: 50px; font-weight: 700; font-size: 1rem; text-align: center; min-width: 130px; }
+      .status-pending { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; } 
+      .status-confirmed { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; } 
+      .status-cancel { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+      .info-card { background: #fff; border: 1px solid var(--border-color); border-radius: 15px; padding: 20px; margin-bottom: 15px; }
+      .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+      .info-item { border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; }
+      .info-label { font-weight: 600; color: #64748b; width: 95px; display: inline-block; font-size: 0.95rem; }
+      .info-val { color: #1e293b; font-weight: 500; font-size: 1.1rem; }
+
+      .sick-container { display: flex; flex-direction: column; gap: 12px; }
+      .sick-header-card { padding: 18px; border-radius: 12px; display: flex; align-items: center; font-weight: 700; }
+      .sick-healthy-bg { background-color: #ecfdf5; border: 1px solid #10b981; color: #065f46; }
+      .sick-normal-bg { background-color: #f8fafc; border: 1px solid #cbd5e1; color: #64748b; }
+      .sick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 5px; }
+      .sick-card { background: #fff; border: 1px solid var(--border-color); padding: 15px; border-radius: 12px; display: flex; align-items: center; }
+      .sick-card.active { border-color: var(--primary-color); background-color: #f0f9ff; }
+      .sick-card.inactive { opacity: 0.6; background-color: #fafafa; }
+      .sick-check { width: 24px; height: 24px; margin-right: 12px; accent-color: var(--primary-color); }
+      
+      .memo-area { margin-top: 5px; padding: 15px; border-radius: 12px; background: #fff; border: 1.5px solid #e2e8f0; }
+      .memo-area.active { border-color: var(--primary-color); }
+      .memo-label { font-size: 1rem; font-weight: 700; color: var(--primary-color); margin-bottom: 8px; display: block; }
+      .memo-text { font-size: 1.05rem; color: #334155; min-height: 28px; }
+
+      .footer-actions { display: flex; gap: 15px; margin-top: 30px; }
+      .btn-cancel { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; flex: 1; }
+      .btn-confirm { background-color: var(--primary-color) !important; color: #fff !important; flex: 1; }
+    </style>
+  </head>
+  <body>
+    <div class="res-wrap">
+      <div class="search-section">
+        <div class="row g-4">
+          <div class="col-12 col-md-6">
+            <div class="search-box-wrap">
+              <label class="search-label" for="sel_unconfirmed">
+                <input type="radio" name="smode" id="m_list" checked class="form-check-input me-2"> 待確認預約清單
+              </label>
+              <select id="sel_unconfirmed" class="form-select" 
+                      onchange="if(this.value){ 
+                        document.getElementById('inp_manual').value=''; 
+                        document.getElementById('m_list').checked=true; 
+                        loadDetail(this.value); 
+                      }">
+                <option value="">讀取中...</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="search-box-wrap">
+              <label class="search-label" for="inp_manual">
+                <input type="radio" name="smode" id="m_manual" class="form-check-input me-2"> 手動輸入單號查詢
+              </label>
+              <div class="input-group">
+                <input type="text" id="inp_manual" class="form-control" placeholder="Rxxxxxxxxxxxx" 
+                       onfocus="document.getElementById('m_manual').checked=true; document.getElementById('sel_unconfirmed').value='';"
+                       onkeypress="if(event.key === 'Enter') doSearch();">
+                <button class="btn btn-dark px-4" type="button" onclick="doSearch()">查詢</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center justify-content-between mb-4 bg-light p-3 rounded-3 border">
+        <div><span class="text-muted small d-block fw-bold">預約單號</span><span id="txt_rid" class="h4 mb-0 fw-bold text-primary">尚未選擇</span></div>
+        <div id="txt_status_display" class="status-badge bg-white shadow-sm">--</div>
+      </div>
+
+      <div class="card border-0 bg-light p-4 mb-3" style="border-radius: 15px; border: 1px solid #e2e8f0 !important;">
+        <div class="row g-3">
+          <div class="col-md-5"><label class="form-label fw-bold small">預約日期</label><input type="date" id="txt_date" class="form-control border-0 shadow-sm"></div>
+          <div class="col-md-4"><label class="form-label fw-bold small">開始時間</label><input type="time" id="txt_time" class="form-control border-0 shadow-sm"></div>
+          <div class="col-md-3 d-flex align-items-end"><button class="btn btn-dark w-100 shadow-sm" style="background-color: var(--primary-color) !important;" onclick="saveDateTime()">儲存</button></div>
+        </div>
+      </div>
+
+      <div class="field-label">顧客基本資料 (ID: <span id="span_uid">--</span>)</div>
+      <div id="txt_cust" class="info-card">請選取單號...</div>
+
+      <div class="field-label">寵物基本資料 (ID: <span id="span_pid">--</span>)</div>
+      <div id="txt_pet" class="info-card">請選取單號...</div>
+
+      <div class="field-label">寵物病史紀錄</div>
+      <div id="txt_sick">尚無資料</div>
+
+      <div class="field-label">寵物美容注意事項</div>
+      <div id="txt_wariness">尚無資料</div>
+
+      <div class="footer-actions">
+        <button class="btn btn-cancel" onclick="submitStatus(-1)">取消預約</button>
+        <button class="btn btn-confirm" onclick="submitStatus(1)">確認核准預約</button>
+      </div>
+    </div>
+
+    <script>
+      // ==========================================
+      // ★★★ 請替換為您剛剛部署得到的 WebApp 網址 ★★★
+      // ==========================================
+      const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
+
+      /** 核心程式邏輯轉換為 fetch API */
+      
+      // 1. 取得待確認清單 (GET)
+      async function refreshList() {
+        const sel = document.getElementById('sel_unconfirmed');
+        sel.innerHTML = '<option value="">讀取中...</option>'; 
+        try {
+          const response = await fetch(`${GAS_API_URL}?action=getUnconfirmedList`);
+          const list = await response.json();
+          
+          sel.innerHTML = '<option value="">未確認預約單</option>'; 
+          if(list && !list.error) {
+            list.forEach(item => sel.add(new Option(item.display, item.id)));
+          }
+        } catch (error) {
+          sel.innerHTML = '<option value="">讀取失敗</option>';
+          console.error("讀取清單失敗:", error);
+        }
+      }
+      
+      // 初始化頁面
+      (function init() { refreshList(); })();
+
+      function doSearch() { 
+        const id = document.getElementById('inp_manual').value.trim();
+        if(id) loadDetail(id); else alert("請輸入單號");
+      }
+
+      // 2. 取得預約單明細 (GET)
+      async function loadDetail(id) {
+        if(!id) return;
+        document.getElementById('txt_rid').innerText = "讀取中...";
+        
+        try {
+          const response = await fetch(`${GAS_API_URL}?action=getReservationDetail&resId=${id}`);
+          const data = await response.json();
+
+          if (!data || data.error) { alert(data.msg || "讀取失敗"); return; }
+          
+          document.getElementById('txt_rid').innerText = data.R_ID;
+          document.getElementById('txt_date').value = data.R_Date || "";
+          document.getElementById('txt_time').value = data.R_StartTime || "";
+          document.getElementById('span_uid').innerText = data.U_ID || "N/A";
+          document.getElementById('span_pid').innerText = data.P_ID || "N/A";
+
+          let statusBadge = "";
+          let flag = Number(data.U_Flag); 
+          if (flag === 99) statusBadge = `<span class="badge bg-danger rounded-pill ms-2">黑名單</span>`;
+          else if (flag === 0) statusBadge = `<span class="badge bg-secondary rounded-pill ms-2">無效客</span>`;
+          else statusBadge = `<span class="badge bg-success rounded-pill ms-2">正常客</span>`;
+
+          document.getElementById('txt_cust').innerHTML = `
+            <div class="info-grid">
+              <div class="info-item"><span class="info-label">名稱</span><span class="info-val">${data.U_Name || "---"} ${statusBadge}</span></div>
+              <div class="info-item"><span class="info-label">電話</span><span class="info-val">${data.U_Phone || "---"}</span></div>
+              <div class="info-item" style="grid-column: span 2;"><span class="info-label">地址</span><span class="info-val">${data.U_Addr || "---"}</span></div>
+              <div class="info-item" style="grid-column: span 2;"><span class="info-label">客戶備註</span><span class="text-muted">${data.U_Memo || "無"}</span></div>
+              <div class="info-item" style="grid-column: span 2;"><span class="info-label" style="color: #d97706;">店家備註</span><span class="info-val" style="color: #d97706;">${data.U_SMemo || "無"}</span></div>
+            </div>`;
+
+          document.getElementById('txt_pet').innerHTML = `
+            <div class="info-grid">
+              <div class="info-item"><span class="info-label">寵物名稱</span><span class="info-val">${data.P_Name || "---"}</span></div>
+              <div class="info-item"><span class="info-label">類型/性別</span><span class="info-val">${data.P_Type || "---"} / ${data.P_Sex || "---"}</span></div>
+              <div class="info-item"><span class="info-label">品種</span><span class="info-val">${data.P_Breeds || "---"}</span></div>
+              <div class="info-item"><span class="info-label">目前年紀</span><span class="info-val">${data.P_Age || "未知"}</span></div>
+              <div class="info-item"><span class="info-label">體重</span><span class="info-val">${data.P_Weight || "---"} kg</span></div>
+              <div class="info-item"><span class="info-label">體型</span><span class="info-val">${data.P_Size || "---"}</span></div>
+              <div class="info-item" style="grid-column: span 2;"><span class="info-label">飼主備註</span><span class="text-muted">${data.P_Memo || "無"}</span></div>
+              <div class="info-item" style="grid-column: span 2;"><span class="info-label" style="color: #d97706;">店家備註</span><span class="info-val" style="color: #d97706;">${data.P_SMemo || "無"}</span></div>
+            </div>`;
+          
+          renderSickHTML(data);
+          renderWarinessHTML(data);
+          updateStatusBadge(data.R_Flag, data.R_Confirm);
+
+        } catch (error) {
+          alert("連線錯誤: " + error.message);
+          document.getElementById('txt_rid').innerText = "尚未選擇";
+        }
+      }
+
+      function renderSickHTML(d) {
+        const simple = [{k:'PS_CKD', l:'慢性腎衰竭'}, {k:'PS_RV', l:'狂犬病'}, {k:'PS_HI', l:'聽力受損'}, {k:'PS_VI', l:'視力受損'}, {k:'PS_HWD', l:'行動不便'}, {k:'PS_GI', l:'癲癇'}, {k:'PS_CDV', l:'犬瘟熱'}, {k:'PS_PIV', l:'氣管塌陷'}, {k:'PS_HD', l:'心臟病'}, {k:'PS_Asth', l:'氣喘(易喘)'}];
+        const complex = [{k:'PS_DL', m:'PS_DL_Memo', l:'關節脫臼'}, {k:'PS_NTDs', m:'PS_NTDs_Memo', l:'寄生蟲感染'}, {k:'PS_OA', m:'PS_OA_Memo', l:'骨骼舊傷'}, {k:'PS_AD', m:'PS_AD_Memo', l:'皮膚疾病'}, {k:'PS_Other', m:'PS_Other_Memo', l:'其他'}];
+        
+        let h = `<div class="sick-container"><div class="sick-header-card ${d.PS_None==1?'sick-healthy-bg':'sick-normal-bg'}"><input type="checkbox" class="sick-check" ${d.PS_None==1?'checked':''} disabled> 健康無疾病</div><div class="sick-grid">`;
+        simple.forEach(i => { const active = d[i.k] == 1; h += `<div class="sick-card ${active?'active':'inactive'}"><input type="checkbox" class="sick-check" ${active?'checked':''} disabled><span>${i.l}</span></div>`; });
+        h += `</div>`;
+        complex.forEach(i => { const active = d[i.k] == 1; h += `<div class="memo-area ${active?'active':''}"><span class="memo-label"><input type="checkbox" class="sick-check" ${active?'checked':''} disabled> ${i.l} 說明</span><div class="memo-text ${active?'':'text-muted'}">${d[i.m] || (active ? "未填寫說明" : "---")}</div></div>`; });
+        document.getElementById('txt_sick').innerHTML = h + '</div>';
+      }
+
+      function renderWarinessHTML(d) {
+        const simple = [{k:'PW_ASB', l:'攻擊性'}, {k:'PW_WN', l:'不親狗'}, {k:'PW_Mani', l:'易緊張'}, {k:'PW_SAD', l:'分離焦慮'}, {k:'PW_DDS', l:'掙扎'}, {k:'PW_PD', l:'不親人'}];
+        const complex = [{k:'PW_BWA', m:'PW_BWA_Memo', l:'敏感部位'}, {k:'PW_Other', m:'PW_Other_Memo', l:'其他'}];
+        let h = `<div class="sick-container"><div class="sick-header-card ${d.PW_None==1?'sick-healthy-bg':'sick-normal-bg'}"><input type="checkbox" class="sick-check" ${d.PW_None==1?'checked':''} disabled> 無須注意事項</div><div class="sick-grid">`;
+        simple.forEach(i => { const active = d[i.k] == 1; h += `<div class="sick-card ${active?'active':'inactive'}"><input type="checkbox" class="sick-check" ${active?'checked':''} disabled><span>${i.l}</span></div>`; });
+        h += `</div>`;
+        complex.forEach(i => { const active = d[i.k] == 1; h += `<div class="memo-area ${active?'active':''}"><span class="memo-label"><input type="checkbox" class="sick-check" ${active?'checked':''} disabled> ${i.l} 說明</span><div class="memo-text ${active?'':'text-muted'}">${d[i.m] || (active ? "未填寫說明" : "---")}</div></div>`; });
+        document.getElementById('txt_wariness').innerHTML = h + '</div>';
+      }
+
+      function updateStatusBadge(f, c) {
+        const el = document.getElementById('txt_status_display');
+        el.className = 'status-badge'; 
+        if (f == 1 && c == 0) { el.innerText = "待確認"; el.classList.add('status-pending'); }
+        else if (f == 1 && c == 1) { el.innerText = "已確認"; el.classList.add('status-confirmed'); }
+        else { el.innerText = "已取消"; el.classList.add('status-cancel'); }
+      }
+
+      // 3. 儲存預約時間 (POST)
+      async function saveDateTime() {
+        const rid = document.getElementById('txt_rid').innerText;
+        const nD = document.getElementById('txt_date').value, nT = document.getElementById('txt_time').value;
+        if(rid === "尚未選擇" || !nD || !nT) return alert("請完整填寫日期與時間");
+        
+        try {
+          const response = await fetch(GAS_API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'updateReservationTime', resId: rid, newDate: nD, newTime: nT })
+          });
+          const result = await response.json();
+          alert(result.msg);
+        } catch (error) {
+          alert("儲存失敗: " + error.message);
+        }
+      }
+
+      // 4. 更新單據狀態 (POST)
+      async function submitStatus(val) {
+        const rid = document.getElementById('txt_rid').innerText;
+        if (rid === "尚未選擇" || !confirm("確定執行此狀態變更操作？")) return;
+        
+        try {
+          const response = await fetch(GAS_API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'updateConfirmStatus', resId: rid, statusValue: val })
+          });
+          const result = await response.json();
+          
+          alert(result.msg); 
+          if(result.success) { 
+            refreshList(); 
+            updateStatusBadge(val==1?1:0, val==1?1:0); 
+          }
+        } catch (error) {
+          alert("更新狀態失敗: " + error.message);
+        }
+      }
+    </script>
+  </body>
+</html>
