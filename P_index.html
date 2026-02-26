@@ -1,0 +1,102 @@
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // ★★★ 非常重要：請將這裡替換成您剛剛部署 GAS 獲得的 Web App URL ★★★
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
+
+  const offcanvas = new bootstrap.Offcanvas(document.getElementById('sidebar'));
+  let homeHTML = "";
+
+  window.onload = function() {
+    homeHTML = document.getElementById('app').innerHTML;
+    startClock();
+    updateFutureLabels();
+    refreshDashboard();
+  };
+
+  // 1. 改造：使用 fetch 呼叫 GAS API 取得儀表板資料
+  async function refreshDashboard() {
+    try {
+      // 呼叫 GET 請求，並帶上 action 參數
+      const response = await fetch(`${GAS_API_URL}?action=getDashboardData`);
+      const data = await response.json();
+      
+      if(!data || data.error) {
+        console.error("讀取失敗:", data.msg);
+        return;
+      }
+      
+      document.getElementById('val-walk-in').innerText = data.walkIn || '--';
+      document.getElementById('val-total-booking').innerText = data.totalBooking || '--';
+      document.getElementById('val-checked-in').innerText = data.checkedIn || '--';
+      document.getElementById('val-no-show').innerText = data.noShow || '--';
+      document.getElementById('val-overdue').innerText = data.overdue || '--';
+      document.getElementById('val-today-orders').innerText = data.todayOrders || '--';
+      document.getElementById('val-unconfirmed').innerText = data.unconfirmed || '--';
+      
+      if(data.futureRes) {
+        for(let i=0; i<5; i++) {
+          document.getElementById(`val-n${i+1}`).innerText = data.futureRes[i] || '--';
+        }
+      }
+    } catch (error) {
+      console.error("API 連線錯誤:", error);
+    }
+  }
+
+  function updateFutureLabels() {
+    const days = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+    for (let i = 1; i <= 5; i++) {
+      let t = new Date(); t.setDate(t.getDate() + i);
+      let mm = String(t.getMonth() + 1).padStart(2, '0'), dd = String(t.getDate()).padStart(2, '0');
+      document.getElementById(`label-n${i}`).innerText = `${mm}/${dd}`;
+      if (i > 1) document.getElementById(`day-n${i}`).innerText = days[t.getDay()];
+    }
+  }
+
+  function startClock() {
+    const d = document.getElementById('current-datetime');
+    setInterval(() => {
+      const now = new Date();
+      d.innerText = `${now.toLocaleDateString('zh-TW', {month:'2-digit', day:'2-digit'})} ${now.toLocaleTimeString('zh-TW', {hour12:false})}`;
+    }, 1000);
+  }
+
+  function goHome() { 
+    if(offcanvas) offcanvas.hide(); 
+    document.getElementById('app').innerHTML = homeHTML; 
+    updateFutureLabels(); 
+    refreshDashboard(); 
+  }
+
+  // 2. 改造：SPA 路由改為抓取 GitHub 上的同目錄 HTML 檔案
+  async function route(pageName) {
+    offcanvas.hide();
+    document.getElementById('app').innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-primary"></div><p class="mt-3">正在載入...</p></div>';
+    
+    try {
+      // 假設所有 HTML 檔都放在 GitHub 的同一個資料夾下
+      const response = await fetch(`${pageName}.html`);
+      if (!response.ok) throw new Error(`無法載入 ${pageName}.html`);
+      
+      const html = await response.text();
+      document.getElementById('app').innerHTML = html;
+      
+      // 注意：使用 innerHTML 塞入 HTML 時，裡面的 <script> 標籤不會自動執行。
+      // 因此我們需要呼叫下方的手動執行腳本函數。
+      executeScripts(document.getElementById('app'));
+    } catch (error) {
+      document.getElementById('app').innerHTML = `<div class="alert alert-danger m-4">系統錯誤：${error.message}</div>`;
+    }
+  }
+
+  // 3. 輔助函數：強制執行利用 innerHTML 載入的 JavaScript 
+  function executeScripts(element) {
+    const scripts = element.querySelectorAll('script');
+    scripts.forEach(oldScript => {
+      const newScript = document.createElement('script');
+      Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+      newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+      oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
+  }
+</script>
