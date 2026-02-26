@@ -1,104 +1,230 @@
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-  // ★★★ 記得保持您剛剛設定的 API 網址 ★★★
-  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
-
-  let homeHTML = "";
-
-  window.onload = function() {
-    homeHTML = document.getElementById('app').innerHTML;
-    startClock();
-    updateFutureLabels();
-    refreshDashboard();
-  };
-
-  // --- [新增] 安全關閉側邊欄的函數 ---
-  function closeSidebar() {
-    const sidebarEl = document.getElementById('sidebar');
-    // 取得 Bootstrap 已經自動建立的實體，避免重複綁定導致 backdrop 報錯
-    const bsOffcanvas = bootstrap.Offcanvas.getInstance(sidebarEl);
-    if (bsOffcanvas) {
-      bsOffcanvas.hide();
-    }
-  }
-
-  async function refreshDashboard() {
-    try {
-      const response = await fetch(`${GAS_API_URL}?action=getDashboardData`);
-      const data = await response.json();
-      
-      if(!data || data.error) {
-        console.error("讀取失敗:", data.msg);
-        return;
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>SPA 管理系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      :root {
+        --primary-dark: #1a3c4a; --accent-blue: #3498db; --accent-green: #27ae60;
+        --accent-orange: #f59e0b; --accent-grey: #94a3b8; --bg-light: #f8fafc;
       }
-      
-      document.getElementById('val-walk-in').innerText = data.walkIn || '--';
-      document.getElementById('val-total-booking').innerText = data.totalBooking || '--';
-      document.getElementById('val-checked-in').innerText = data.checkedIn || '--';
-      document.getElementById('val-no-show').innerText = data.noShow || '--';
-      document.getElementById('val-overdue').innerText = data.overdue || '--';
-      document.getElementById('val-today-orders').innerText = data.todayOrders || '--';
-      document.getElementById('val-unconfirmed').innerText = data.unconfirmed || '--';
-      
-      if(data.futureRes) {
-        for(let i=0; i<5; i++) {
-          document.getElementById(`val-n${i+1}`).innerText = data.futureRes[i] || '--';
+      body { background-color: var(--bg-light); -webkit-tap-highlight-color: transparent; font-family: 'PingFang TC', sans-serif; }
+      .navbar { background-color: var(--primary-dark) !important; border-bottom: 3px solid #0f2631; }
+      #current-datetime { font-family: 'Monaco', monospace; font-weight: 600; font-size: 0.9rem; }
+      #app { min-height: calc(100vh - 65px); padding-bottom: 40px; }
+      .section-header { position: relative; text-align: center; margin: 35px 0 20px; }
+      .section-title { display: inline-block; font-weight: 700; color: var(--primary-dark); font-size: 1.5rem; padding: 0 20px; background: var(--bg-light); position: relative; z-index: 2; }
+      .section-header::after { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: #cbd5e1; z-index: 1; }
+      .dash-card { background: white; border: 1px solid #e2e8f0; border-radius: 18px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px 10px; height: 100%; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+      .card-grey { border-top: 5px solid var(--accent-grey); background: linear-gradient(to bottom, #ffffff, #f8fafc); }
+      .card-main { border-top: 5px solid var(--accent-blue); }
+      .card-success { border-top: 5px solid var(--accent-green); background: linear-gradient(135deg, #ffffff 0%, #f0fff4 100%); }
+      .card-warning { border-top: 5px solid var(--accent-orange); }
+      .card-future { background: linear-gradient(to bottom, #ffffff, #f1f5f9); }
+      .dash-label { font-size: 1.1rem; font-weight: 600; color: #475569; margin-bottom: 8px; }
+      .dash-value { font-size: 2.5rem; font-weight: 800; color: #1e293b; line-height: 1.1; }
+      .text-danger-custom { color: #ef4444 !important; }
+      .sub-item { padding-left: 45px !important; cursor: pointer; color: #333; text-decoration: none; }
+      .sub-item:hover { background-color: #f1f5f9; }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-dark sticky-top">
+      <div class="container-fluid">
+        <div class="d-flex align-items-center">
+          <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar"><span class="navbar-toggler-icon"></span></button>
+          <a class="navbar-brand ms-2 fw-bold" onclick="goHome()" style="cursor:pointer">SPA 管理系統</a>
+        </div>
+        <div class="text-light text-end">
+          <div id="current-datetime">Loading...</div>
+          <div class="text-secondary" style="font-size: 0.7rem;">iPad Active Mode</div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="offcanvas offcanvas-start" id="sidebar">
+      <div class="offcanvas-header border-bottom"><h5 class="offcanvas-title fw-bold">功能導航</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
+      <div class="offcanvas-body p-0">
+        <div class="list-group list-group-flush">
+          <div class="list-group-item fw-bold bg-light text-primary">📍 報到功能</div>
+          <a onclick="route('P_CheckIn_Scheduled')" class="list-group-item sub-item">A. 預約報到</a>
+          <a onclick="route('P_CheckIn_WalkIn')" class="list-group-item sub-item">B. 未預約報到</a>
+          <div class="list-group-item fw-bold bg-light text-success">📝 單據維護</div>
+          <a onclick="route('P_Reservation')" class="list-group-item sub-item">A. 預約單</a>
+          <a onclick="route('P_Order')" class="list-group-item sub-item">B. 訂單</a>
+          <div class="list-group-item fw-bold bg-light text-secondary">🛠 資料維護</div>
+          <a onclick="route('P_Customer')" class="list-group-item sub-item">A. 客戶資料維護</a>
+          <a onclick="route('P_Servers')" class="list-group-item sub-item">B. 服務項目維護</a>
+          <a onclick="route('P_Beautician')" class="list-group-item sub-item">C. 美容師資料維護</a>
+          <a onclick="route('P_Holidy')" class="list-group-item sub-item">D. 店休日維護</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container" id="app">
+      <div id="home-view">
+        <div class="section-header"><span class="section-title">今日營業總覽</span></div>
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3"><div class="dash-card card-grey"><div class="dash-label">1.未預約件數</div><div class="dash-value" id="val-walk-in">--</div></div></div>
+          <div class="col-6 col-md-3"><div class="dash-card card-main"><div class="dash-label">2.預約件數(3+4+5)</div><div class="dash-value" id="val-total-booking">--</div></div></div>
+          <div class="col-6 col-md-3"><div class="dash-card card-main"><div class="dash-label">3.已報到</div><div class="dash-value" id="val-checked-in">--</div></div></div>
+          <div class="col-6 col-md-3"><div class="d-flex flex-column gap-2 h-100">
+            <div class="dash-card py-2 flex-grow-1" style="border-left:5px solid #ef4444;"><div class="dash-label mb-0" style="font-size:0.9rem;">4.未報到</div><div class="dash-value text-danger-custom" id="val-no-show" style="font-size:1.8rem;">--</div></div>
+            <div class="dash-card py-2 flex-grow-1" style="border-left:5px solid #ef4444;"><div class="dash-label mb-0" style="font-size:0.9rem;">5.超時未報到</div><div class="dash-value text-danger-custom" id="val-overdue" style="font-size:1.8rem;">--</div></div>
+          </div></div>
+        </div>
+        <div class="row mb-5"><div class="col-12"><div class="dash-card card-success" style="min-height:120px;"><div class="dash-label" style="font-size:1.3rem;">完成訂單(1+3)</div><div class="dash-value" id="val-today-orders" style="font-size:3.2rem;color:#15803d;">--</div></div></div></div>
+        <div class="section-header"><span class="section-title">未來 5 日預約概況</span></div>
+        <div class="row row-cols-2 row-cols-md-5 g-3 mb-5">
+          <div class="col"><div class="dash-card card-future"><div class="future-date-label">明日</div><div class="dash-label" id="label-n1">--/--</div><div class="dash-value" id="val-n1" style="font-size:2rem;">--</div></div></div>
+          <div class="col"><div class="dash-card card-future"><div class="future-date-label" id="day-n2">N+2</div><div class="dash-label" id="label-n2">--/--</div><div class="dash-value" id="val-n2" style="font-size:2rem;">--</div></div></div>
+          <div class="col"><div class="dash-card card-future"><div class="future-date-label" id="day-n3">N+3</div><div class="dash-label" id="label-n3">--/--</div><div class="dash-value" id="val-n3" style="font-size:2rem;">--</div></div></div>
+          <div class="col"><div class="dash-card card-future"><div class="future-date-label" id="day-n4">N+4</div><div class="dash-label" id="label-n4">--/--</div><div class="dash-value" id="val-n4" style="font-size:2rem;">--</div></div></div>
+          <div class="col"><div class="dash-card card-future"><div class="future-date-label" id="day-n5">N+5</div><div class="dash-label" id="label-n5">--/--</div><div class="dash-value" id="val-n5" style="font-size:2rem;">--</div></div></div>
+        </div>
+        <div class="section-header"><span class="section-title">其他</span></div>
+        <div class="row"><div class="col-12"><div class="dash-card card-warning" style="border-left:8px solid var(--accent-orange);"><div class="dash-label">待處理預約單</div><div class="dash-value" id="val-unconfirmed" style="color:#d97706;">--</div></div></div></div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // ==========================================
+      // ★★★ 請將下方替換為您剛剛部署得到的 WebApp 網址 ★★★
+      // ==========================================
+      const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
+
+      let homeHTML = "";
+
+      // 網頁載入完成後執行的動作
+      window.onload = function() {
+        const appElement = document.getElementById('app');
+        if (appElement) {
+          homeHTML = appElement.innerHTML; // 備份首頁內容
+        }
+        startClock();
+        updateFutureLabels();
+        refreshDashboard();
+      };
+
+      // 安全關閉側邊選單
+      function closeSidebar() {
+        const sidebarEl = document.getElementById('sidebar');
+        if (sidebarEl) {
+          // 如果 Bootstrap 尚未初始化這個實體，就先初始化它
+          const bsOffcanvas = bootstrap.Offcanvas.getInstance(sidebarEl) || new bootstrap.Offcanvas(sidebarEl);
+          bsOffcanvas.hide();
+          
+          // 強制移除背景黑幕 (解決偶發性 backdrop 卡住的問題)
+          const backdrops = document.querySelectorAll('.offcanvas-backdrop');
+          backdrops.forEach(backdrop => backdrop.remove());
+          document.body.classList.remove('offcanvas-open');
+          document.body.style.overflow = '';
+          document.body.style.paddingRight = '';
         }
       }
-    } catch (error) {
-      console.error("API 連線錯誤:", error);
-    }
-  }
 
-  function updateFutureLabels() {
-    const days = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
-    for (let i = 1; i <= 5; i++) {
-      let t = new Date(); t.setDate(t.getDate() + i);
-      let mm = String(t.getMonth() + 1).padStart(2, '0'), dd = String(t.getDate()).padStart(2, '0');
-      document.getElementById(`label-n${i}`).innerText = `${mm}/${dd}`;
-      if (i > 1) document.getElementById(`day-n${i}`).innerText = days[t.getDay()];
-    }
-  }
+      // 回到首頁
+      function goHome() { 
+        closeSidebar();
+        document.getElementById('app').innerHTML = homeHTML; 
+        updateFutureLabels(); 
+        refreshDashboard(); 
+      }
 
-  function startClock() {
-    const d = document.getElementById('current-datetime');
-    setInterval(() => {
-      const now = new Date();
-      d.innerText = `${now.toLocaleDateString('zh-TW', {month:'2-digit', day:'2-digit'})} ${now.toLocaleTimeString('zh-TW', {hour12:false})}`;
-    }, 1000);
-  }
+      // 載入儀表板資料 (呼叫 API)
+      async function refreshDashboard() {
+        // 如果目前不是首頁畫面，就不執行讀取
+        if (!document.getElementById('val-walk-in')) return; 
 
-  function goHome() { 
-    closeSidebar(); // 改用安全的關閉方式
-    document.getElementById('app').innerHTML = homeHTML; 
-    updateFutureLabels(); 
-    refreshDashboard(); 
-  }
+        try {
+          const response = await fetch(`${GAS_API_URL}?action=getDashboardData`);
+          const data = await response.json();
+          
+          if(!data || data.error) {
+            console.warn("儀表板讀取失敗:", data.msg);
+            return;
+          }
+          
+          document.getElementById('val-walk-in').innerText = data.walkIn !== undefined ? data.walkIn : '--';
+          document.getElementById('val-total-booking').innerText = data.totalBooking !== undefined ? data.totalBooking : '--';
+          document.getElementById('val-checked-in').innerText = data.checkedIn !== undefined ? data.checkedIn : '--';
+          document.getElementById('val-no-show').innerText = data.noShow !== undefined ? data.noShow : '--';
+          document.getElementById('val-overdue').innerText = data.overdue !== undefined ? data.overdue : '--';
+          document.getElementById('val-today-orders').innerText = data.todayOrders !== undefined ? data.todayOrders : '--';
+          document.getElementById('val-unconfirmed').innerText = data.unconfirmed !== undefined ? data.unconfirmed : '--';
+          
+          if(data.futureRes) {
+            for(let i=0; i<5; i++) {
+              let el = document.getElementById(`val-n${i+1}`);
+              if(el) el.innerText = data.futureRes[i] !== undefined ? data.futureRes[i] : '--';
+            }
+          }
+        } catch (error) {
+          console.error("API 連線錯誤:", error);
+        }
+      }
 
-  async function route(pageName) {
-    closeSidebar(); // 改用安全的關閉方式
-    document.getElementById('app').innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-primary"></div><p class="mt-3">正在載入...</p></div>';
-    
-    try {
-      const response = await fetch(`${pageName}.html`);
-      if (!response.ok) throw new Error(`無法載入 ${pageName}.html`);
-      
-      const html = await response.text();
-      document.getElementById('app').innerHTML = html;
-      
-      executeScripts(document.getElementById('app'));
-    } catch (error) {
-      document.getElementById('app').innerHTML = `<div class="alert alert-danger m-4">系統錯誤：${error.message}</div>`;
-    }
-  }
+      // 更新未來五天的日期標籤
+      function updateFutureLabels() {
+        const days = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+        for (let i = 1; i <= 5; i++) {
+          const labelEl = document.getElementById(`label-n${i}`);
+          const dayEl = document.getElementById(`day-n${i}`);
+          if (!labelEl) continue; // 如果元素不存在就跳過
 
-  function executeScripts(element) {
-    const scripts = element.querySelectorAll('script');
-    scripts.forEach(oldScript => {
-      const newScript = document.createElement('script');
-      Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-      newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-      oldScript.parentNode.replaceChild(newScript, oldScript);
-    });
-  }
-</script>
+          let t = new Date(); 
+          t.setDate(t.getDate() + i);
+          let mm = String(t.getMonth() + 1).padStart(2, '0');
+          let dd = String(t.getDate()).padStart(2, '0');
+          
+          labelEl.innerText = `${mm}/${dd}`;
+          if (i > 1 && dayEl) dayEl.innerText = days[t.getDay()];
+        }
+      }
+
+      // 右上角時鐘
+      function startClock() {
+        const d = document.getElementById('current-datetime');
+        setInterval(() => {
+          const now = new Date();
+          if (d) {
+            d.innerText = `${now.toLocaleDateString('zh-TW', {month:'2-digit', day:'2-digit'})} ${now.toLocaleTimeString('zh-TW', {hour12:false})}`;
+          }
+        }, 1000);
+      }
+
+      // SPA 換頁功能：從 GitHub 讀取其他的 HTML 檔案
+      async function route(pageName) {
+        closeSidebar();
+        document.getElementById('app').innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div><h5 class="mt-3 text-secondary">正在載入畫面...</h5></div>';
+        
+        try {
+          const response = await fetch(`${pageName}.html`);
+          if (!response.ok) throw new Error(`找不到分頁檔案：${pageName}.html`);
+          
+          const html = await response.text();
+          document.getElementById('app').innerHTML = html;
+          
+          // 強制執行載入 HTML 裡面的 JavaScript
+          executeScripts(document.getElementById('app'));
+        } catch (error) {
+          document.getElementById('app').innerHTML = `<div class="alert alert-danger m-4 shadow-sm border-0">系統錯誤：${error.message}</div>`;
+        }
+      }
+
+      // 輔助函數：執行 innerHTML 中的 <script>
+      function executeScripts(element) {
+        const scripts = element.querySelectorAll('script');
+        scripts.forEach(oldScript => {
+          const newScript = document.createElement('script');
+          Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+          newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+          oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
+      }
+    </script>
+  </body>
+</html>
