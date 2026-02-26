@@ -128,7 +128,9 @@
       // 1. 取得待確認清單 (GET)
       async function refreshList() {
         const sel = document.getElementById('sel_unconfirmed');
-        sel.innerHTML = '<option value="">讀取中...</option>'; 
+        if (!sel) return; // 安全檢查
+        
+        sel.innerHTML = '<option value="">讀取中...</option>';
         try {
           const response = await fetch(`${GAS_API_URL}?action=getUnconfirmedList`);
           const list = await response.json();
@@ -277,3 +279,4 @@
   </body>
 
 </html>
+
