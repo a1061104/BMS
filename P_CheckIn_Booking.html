@@ -92,6 +92,13 @@
         </select>
       </div>
 
+      <div class="field-label">選取毛型（選填）</div>
+      <div class="info-card">
+        <select id="sel_hairService" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 無加選毛型 --</option>
+        </select>
+      </div>
+
       <div class="info-card mt-4">
         <div class="d-flex justify-content-between align-items-center">
           <span class="h5 mb-0 fw-bold text-secondary">預估服務金額</span>
@@ -111,6 +118,7 @@
   var GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
   var serviceList = [];
   var addonList = []; // 新增加購清單陣列
+  var hairList = []; // 【新增】存放毛型服務清單
   var scanner;
 
   function showStep(s) {
@@ -168,6 +176,7 @@
 
     loadServices(d.P_Type, d.P_Size);
     loadAddonServices(d.P_Type, d.P_Size); // 【新增】同時載入加購服務
+    loadHairServices(d.P_Type, d.P_Size); // 【新增】同時載入毛型服務
   }
 
   function renderStatusGrid(targetId, data, noneKey, noneLabel, grids, memos) {
@@ -240,7 +249,37 @@
       });
   }
 
-// 【修改】計算總金額：主服務 + 下拉選單單選的加購項目
+// 【新增】載入毛型服務清單
+  function loadHairServices(pType, pSize) {
+    var sel = document.getElementById('sel_hairService');
+    sel.innerHTML = '<option value="">正在過濾毛型服務...</option>';
+    
+    fetch(GAS_API_URL + "?action=getFilteredHairServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        hairList = list;
+        sel.innerHTML = '<option value="">-- 無加選毛型 --</option>'; // 預設選項
+        
+        if (list.error || list.length === 0) { 
+          sel.innerHTML = '<option value="">無相符的毛型服務</option>'; 
+          return; 
+        }
+        
+        // 將毛型服務逐一加入下拉選單中
+        list.forEach(function(svc) {
+          var opt = document.createElement('option');
+          opt.value = svc.name;
+          opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
+          sel.add(opt);
+        });
+      })
+      .catch(function(err) {
+        sel.innerHTML = '<option value="">載入失敗，請稍後再試</option>';
+        console.error("載入毛型服務失敗:", err);
+      });
+  }
+
+// 【修改】計算總金額：主服務 + 加購項目 + 毛型項目
   function updateServicePrice() {
     var totalPrice = 0;
     
@@ -257,6 +296,15 @@
       var foundAddon = addonList.find(function(a) { return a.name === addonName; });
       if (foundAddon) {
         totalPrice += Number(foundAddon.price);
+      }
+    }
+
+    // 3. 【新增】計算毛型服務金額 (單選)
+    var hairName = document.getElementById('sel_hairService').value;
+    if (hairName) {
+      var foundHair = hairList.find(function(h) { return h.name === hairName; });
+      if (foundHair) {
+        totalPrice += Number(foundHair.price);
       }
     }
 
@@ -293,4 +341,5 @@
 </script>
 </body>
 </html>
+
 
