@@ -85,9 +85,11 @@
         </select>
       </div>
       
-      <div class="field-label">選取加購服務（可複選）</div>
-      <div class="info-card" id="addon_container">
-        <div class="text-secondary">正在讀取加購品項...</div>
+      <div class="field-label">選取加購服務（選填）</div>
+      <div class="info-card">
+        <select id="sel_addonService" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 無加購 --</option>
+        </select>
       </div>
 
       <div class="info-card mt-4">
@@ -208,51 +210,57 @@
       });
   }
 
-  // 【新增】載入加購服務清單
+ // 【修改】載入加購服務清單 (改為下拉選單單選形式)
   function loadAddonServices(pType, pSize) {
-    var container = document.getElementById('addon_container');
-    container.innerHTML = '<div class="text-secondary">正在過濾加購服務...</div>';
+    var sel = document.getElementById('sel_addonService');
+    sel.innerHTML = '<option value="">正在過濾加購服務...</option>';
     
     fetch(GAS_API_URL + "?action=getFilteredAddonServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
       .then(function(res) { return res.json(); })
       .then(function(list) {
         addonList = list;
+        sel.innerHTML = '<option value="">-- 無加購 --</option>'; // 預設選項
+        
         if (list.error || list.length === 0) { 
-          container.innerHTML = '<div class="text-muted">無相符的加購服務</div>'; 
+          sel.innerHTML = '<option value="">無相符的加購服務</option>'; 
           return; 
         }
         
-        var html = '';
-        list.forEach(function(svc, index) {
-          html += '<div class="form-check mb-3" style="font-size: 1.1rem;">' +
-                    '<input class="form-check-input addon-checkbox" type="checkbox" value="' + svc.name + '" id="addon_' + index + '" onchange="updateServicePrice()">' +
-                    '<label class="form-check-label w-100 d-flex justify-content-between" for="addon_' + index + '">' +
-                      '<span>' + svc.name + '</span>' +
-                      '<span class="text-secondary">+$' + svc.price.toLocaleString() + '</span>' +
-                    '</label>' +
-                  '</div>';
+        // 將加購服務逐一加入下拉選單中
+        list.forEach(function(svc) {
+          var opt = document.createElement('option');
+          opt.value = svc.name;
+          opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
+          sel.add(opt);
         });
-        container.innerHTML = html;
       })
       .catch(function(err) {
-        container.innerHTML = '<div class="text-danger">載入失敗，請稍後再試</div>';
+        sel.innerHTML = '<option value="">載入失敗，請稍後再試</option>';
+        console.error("載入加購服務失敗:", err);
       });
   }
 
-  // 【更新】計算總金額：主服務 + 被勾選的加購項目
+// 【修改】計算總金額：主服務 + 下拉選單單選的加購項目
   function updateServicePrice() {
+    var totalPrice = 0;
+    
+    // 1. 計算主服務金額
     var mainName = document.getElementById('sel_mainService').value;
     var foundMain = serviceList.find(function(s) { return s.name === mainName; });
-    var totalPrice = foundMain ? Number(foundMain.price) : 0;
+    if (foundMain) {
+      totalPrice += Number(foundMain.price);
+    }
     
-    var checkboxes = document.querySelectorAll('.addon-checkbox:checked');
-    checkboxes.forEach(function(cb) {
-      var foundAddon = addonList.find(function(a) { return a.name === cb.value; });
+    // 2. 計算加購服務金額 (單選)
+    var addonName = document.getElementById('sel_addonService').value;
+    if (addonName) {
+      var foundAddon = addonList.find(function(a) { return a.name === addonName; });
       if (foundAddon) {
         totalPrice += Number(foundAddon.price);
       }
-    });
+    }
 
+    // 更新畫面顯示
     document.getElementById('txt_servicePrice').innerText = "$ " + totalPrice.toLocaleString();
   }
 
@@ -285,3 +293,4 @@
 </script>
 </body>
 </html>
+
