@@ -109,6 +109,7 @@
   // 使用全域設定中的 URL [cite: 32]
   var GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
   var serviceList = [];
+  var addonList = []; // 【新增】存放加購服務清單
   var scanner;
 
   function showStep(s) {
@@ -163,6 +164,7 @@
     );
 
     loadServices(d.P_Type, d.P_Size);
+    loadAddonServices(d.P_Type, d.P_Size); // 【新增】同時載入加購服務
   }
 
   function renderStatusGrid(targetId, data, noneKey, noneLabel, grids, memos) {
@@ -187,28 +189,52 @@
     document.getElementById(targetId).innerHTML = html;
   }
 
-  function loadServices(pType, pSize) {
-    var sel = document.getElementById('sel_mainService');
-    sel.innerHTML = '<option value="">正在過濾服務...</option>';
-    fetch(GAS_API_URL + "?action=getFilteredServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+function loadAddonServices(pType, pSize) {
+    var container = document.getElementById('addon_container');
+    container.innerHTML = '<div class="text-secondary">正在過濾加購服務...</div>';
+    
+    fetch(GAS_API_URL + "?action=getFilteredAddonServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
       .then(function(res) { return res.json(); })
       .then(function(list) {
-        serviceList = list;
-        sel.innerHTML = '<option value="">-- 請選擇主服務 --</option>';
-        if (list.error || list.length === 0) { sel.innerHTML = '<option value="">無相符服務</option>'; return; }
-        list.forEach(function(svc) {
-          var opt = document.createElement('option');
-          opt.value = svc.name;
-          opt.text = svc.name + " ($" + svc.price.toLocaleString() + ")";
-          sel.add(opt);
+        addonList = list;
+        if (list.error || list.length === 0) { 
+          container.innerHTML = '<div class="text-muted">無相符的加購服務</div>'; 
+          return; 
+        }
+        
+        var html = '';
+        list.forEach(function(svc, index) {
+          html += '<div class="form-check mb-3" style="font-size: 1.1rem;">' +
+                    '<input class="form-check-input addon-checkbox" type="checkbox" value="' + svc.name + '" id="addon_' + index + '" onchange="updateServicePrice()">' +
+                    '<label class="form-check-label w-100 d-flex justify-content-between" for="addon_' + index + '">' +
+                      '<span>' + svc.name + '</span>' +
+                      '<span class="text-secondary">+$' + svc.price.toLocaleString() + '</span>' +
+                    '</label>' +
+                  '</div>';
         });
+        container.innerHTML = html;
+      })
+      .catch(function(err) {
+        container.innerHTML = '<div class="text-danger">載入失敗，請稍後再試</div>';
       });
   }
 
+// 【覆寫】更新總金額（主服務 + 勾選的加購服務）
   function updateServicePrice() {
-    var name = document.getElementById('sel_mainService').value;
-    var found = serviceList.find(function(s) { return s.name === name; });
-    document.getElementById('txt_servicePrice').innerText = found ? "$ " + found.price.toLocaleString() : "$ 0";
+    var mainName = document.getElementById('sel_mainService').value;
+    var foundMain = serviceList.find(function(s) { return s.name === mainName; });
+    var totalPrice = foundMain ? Number(foundMain.price) : 0;
+    
+    // 計算所有被勾選的加購服務金額
+    var checkboxes = document.querySelectorAll('.addon-checkbox:checked');
+    checkboxes.forEach(function(cb) {
+      var foundAddon = addonList.find(function(a) { return a.name === cb.value; });
+      if (foundAddon) {
+        totalPrice += Number(foundAddon.price);
+      }
+    });
+
+    document.getElementById('txt_servicePrice').innerText = "$ " + totalPrice.toLocaleString();
   }
 
   function setLoadingState(isLoading) {
@@ -240,4 +266,5 @@
 </script>
 </body>
 </html>
+
 
