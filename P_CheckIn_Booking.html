@@ -24,7 +24,6 @@
     .info-cell { flex: 1; min-width: 45%; display: flex; align-items: flex-start; }
     .info-label { font-weight: 600; color: #64748b; width: 100px; flex-shrink: 0; }
     
-    /* 網格與說明框 (根據圖片還原) */
     .status-header-box { padding: 15px; border-radius: 12px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; border: 2px solid transparent; }
     .status-header-box.healthy { background-color: #f0fdf4; color: #166534; border-color: #22c55e; }
     .status-header-box.warning { background-color: #fff; color: #64748b; border-color: #e2e8f0; }
@@ -90,7 +89,7 @@
       <div class="info-card" id="addon_container">
         <div class="text-secondary">正在讀取加購品項...</div>
       </div>
-      
+
       <div class="info-card mt-4">
         <div class="d-flex justify-content-between align-items-center">
           <span class="h5 mb-0 fw-bold text-secondary">預估服務金額</span>
@@ -106,10 +105,10 @@
 </div>
 
 <script>
-  // 使用全域設定中的 URL [cite: 32]
+  // !!! 請將這裡換成您最新的 GAS Web App URL !!!
   var GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
   var serviceList = [];
-  var addonList = []; // 【新增】存放加購服務清單
+  var addonList = []; // 新增加購清單陣列
   var scanner;
 
   function showStep(s) {
@@ -133,11 +132,14 @@
         renderAll(d);
         showStep(1);
       })
-      .catch(function(err) { setLoadingState(false); alert("查詢出錯"); });
+      .catch(function(err) { 
+        setLoadingState(false); 
+        console.error("Fetch Error:", err); // 幫助我們在 F12 Console 看到真實錯誤
+        alert("查詢出錯，請確認 GAS API 部署權限是否為「所有人(Anyone)」"); 
+      });
   }
 
   function renderAll(d) {
-    // 渲染基本資料
     var custHtml = '<div class="field-label">顧客基本資料 (ID: ' + (d.U_ID || '--') + ')</div>' +
       '<div class="info-card">' +
         '<div class="info-row"><div class="info-cell"><span class="info-label">名稱</span><span class="info-val">' + d.U_Name + (d.U_Flag==99?' <span class="badge-blacklist">黑名單</span>':'') + '</span></div><div class="info-cell"><span class="info-label">電話</span><span class="info-val">' + (d.U_Phone || '---') + '</span></div></div>' +
@@ -152,7 +154,6 @@
       '</div>';
     document.getElementById('pet_html').innerHTML = petHtml;
 
-    // 渲染網格 (完全還原圖片內容)
     renderStatusGrid('sick_html', d, 'PS_None', '健康無疾病', 
       [{k:'PS_CKD', l:'慢性腎衰竭'}, {k:'PS_RV', l:'狂犬病'}, {k:'PS_HI', l:'聽力受損'}, {k:'PS_VI', l:'視力受損'}, {k:'PS_HWD', l:'行動不便'}, {k:'PS_GI', l:'癲癇'}, {k:'PS_CDV', l:'犬瘟熱'}, {k:'PS_PIV', l:'氣管塌陷'}, {k:'PS_HD', l:'心臟病'}, {k:'PS_Asth', l:'氣喘(易喘)'}], 
       [{k:'PS_DL', m:'PS_DL_Memo', l:'關節脫臼'}, {k:'PS_NTDs', m:'PS_NTDs_Memo', l:'寄生蟲感染'}, {k:'PS_OA', m:'PS_OA_Memo', l:'骨骼舊傷'}, {k:'PS_AD', m:'PS_AD_Memo', l:'皮膚疾病'}, {k:'PS_Other', m:'PS_Other_Memo', l:'其他'}]
@@ -189,7 +190,26 @@
     document.getElementById(targetId).innerHTML = html;
   }
 
-function loadAddonServices(pType, pSize) {
+  function loadServices(pType, pSize) {
+    var sel = document.getElementById('sel_mainService');
+    sel.innerHTML = '<option value="">正在過濾服務...</option>';
+    fetch(GAS_API_URL + "?action=getFilteredServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        serviceList = list;
+        sel.innerHTML = '<option value="">-- 請選擇主服務 --</option>';
+        if (list.error || list.length === 0) { sel.innerHTML = '<option value="">無相符服務</option>'; return; }
+        list.forEach(function(svc) {
+          var opt = document.createElement('option');
+          opt.value = svc.name;
+          opt.text = svc.name + " ($" + svc.price.toLocaleString() + ")";
+          sel.add(opt);
+        });
+      });
+  }
+
+  // 【新增】載入加購服務清單
+  function loadAddonServices(pType, pSize) {
     var container = document.getElementById('addon_container');
     container.innerHTML = '<div class="text-secondary">正在過濾加購服務...</div>';
     
@@ -219,13 +239,12 @@ function loadAddonServices(pType, pSize) {
       });
   }
 
-// 【覆寫】更新總金額（主服務 + 勾選的加購服務）
+  // 【更新】計算總金額：主服務 + 被勾選的加購項目
   function updateServicePrice() {
     var mainName = document.getElementById('sel_mainService').value;
     var foundMain = serviceList.find(function(s) { return s.name === mainName; });
     var totalPrice = foundMain ? Number(foundMain.price) : 0;
     
-    // 計算所有被勾選的加購服務金額
     var checkboxes = document.querySelectorAll('.addon-checkbox:checked');
     checkboxes.forEach(function(cb) {
       var foundAddon = addonList.find(function(a) { return a.name === cb.value; });
@@ -266,5 +285,3 @@ function loadAddonServices(pType, pSize) {
 </script>
 </body>
 </html>
-
-
