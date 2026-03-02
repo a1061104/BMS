@@ -112,6 +112,18 @@
           <option value="">-- 無加年齡層 --</option>
         </select>
       </div>
+
+      <div class="field-label">自訂其他服務（選填）</div>
+      <div class="info-card">
+        <div class="row g-2">
+          <div class="col-8">
+            <input type="text" id="inp_otherServiceDesc" class="form-control form-control-lg" placeholder="請輸入服務內容 (如: 拆結費)">
+          </div>
+          <div class="col-4">
+            <input type="number" id="inp_otherServicePrice" class="form-control form-control-lg" placeholder="金額" min="0" oninput="updateServicePrice()">
+          </div>
+        </div>
+      </div>
       
       <div class="info-card mt-4">
         <div class="d-flex justify-content-between align-items-center">
@@ -407,6 +419,13 @@
       }
     }
 
+    // 6. 【新增】計算自訂其他服務金額 (手動輸入)
+    var otherPrice = document.getElementById('inp_otherServicePrice').value;
+    // 確保有輸入值，且將其轉換為數字後加入總價
+    if (otherPrice && !isNaN(otherPrice)) {
+      totalPrice += Number(otherPrice);
+    }
+
     // 更新畫面顯示
     document.getElementById('txt_servicePrice').innerText = "$ " + totalPrice.toLocaleString();
   }
@@ -440,6 +459,7 @@
 </script>
 </body>
 </html>
+
 
 
 
