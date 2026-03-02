@@ -318,7 +318,7 @@
       });
   }
 
-// 【修改】計算總金額：主服務 + 加購項目 + 毛型項目
+// 【修改】計算總金額：主服務 + 加購項目 + 毛型項目 + 雙層毛型項目
   function updateServicePrice() {
     var totalPrice = 0;
     
@@ -338,7 +338,7 @@
       }
     }
 
-    // 3. 【新增】計算毛型服務金額 (單選)
+    // 3. 計算毛型服務金額 (單選)
     var hairName = document.getElementById('sel_hairService').value;
     if (hairName) {
       var foundHair = hairList.find(function(h) { return h.name === hairName; });
@@ -347,10 +347,11 @@
       }
     }
 
-    // 4. 【新增】計算雙層毛型服務金額 (單選)
-    var hairName = document.getElementById('sel_doublhairService').value;
-    if (hairName) {
-      var foundDoubleHair = doublehairList.find(function(d) { return h.name === hairName; });
+    // 4. 【修正】計算雙層毛型服務金額 (單選)
+    var doubleHairElement = document.getElementById('sel_DoublehairService'); // 修正 ID 拼字與大小寫
+    if (doubleHairElement && doubleHairElement.value) {
+      var doubleHairName = doubleHairElement.value;
+      var foundDoubleHair = doublehairList.find(function(d) { return d.name === doubleHairName; }); // 將 h.name 修正為 d.name
       if (foundDoubleHair) {
         totalPrice += Number(foundDoubleHair.price);
       }
@@ -389,6 +390,7 @@
 </script>
 </body>
 </html>
+
 
 
 
