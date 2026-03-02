@@ -350,9 +350,9 @@
     // 4. 【新增】計算雙層毛型服務金額 (單選)
     var hairName = document.getElementById('sel_doublhairService').value;
     if (hairName) {
-      var foundHair = doublehairList.find(function(h) { return h.name === hairName; });
-      if (foundHair) {
-        totalPrice += Number(foundHair.price);
+      var foundDoubleHair = doublehairList.find(function(d) { return h.name === hairName; });
+      if (foundDoubleHair) {
+        totalPrice += Number(foundDoubleHair.price);
       }
     }
 
@@ -389,6 +389,7 @@
 </script>
 </body>
 </html>
+
 
 
 
