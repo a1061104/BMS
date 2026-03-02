@@ -99,6 +99,13 @@
         </select>
       </div>
 
+      <div class="field-label">選取雙層毛型（選填）</div>
+      <div class="info-card">
+        <select id="sel_DoublehairService" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 無加選毛型 --</option>
+        </select>
+      </div>
+
       <div class="info-card mt-4">
         <div class="d-flex justify-content-between align-items-center">
           <span class="h5 mb-0 fw-bold text-secondary">預估服務金額</span>
@@ -119,6 +126,7 @@
   var serviceList = [];
   var addonList = []; // 新增加購清單陣列
   var hairList = []; // 【新增】存放毛型服務清單
+  var doublehairList = []; // 【新增】存放毛型服務清單
   var scanner;
 
   function showStep(s) {
@@ -279,6 +287,36 @@
       });
   }
 
+// 【新增】載入毛型服務清單
+  function loadDoubleHairServices(pType, pSize) {
+    var sel = document.getElementById('sel_DoublehairService');
+    sel.innerHTML = '<option value="">正在過濾毛型服務...</option>';
+    
+    fetch(GAS_API_URL + "?action=getFilteredDoubleHairServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        doublehairList = list;
+        sel.innerHTML = '<option value="">-- 無加選毛型 --</option>'; // 預設選項
+        
+        if (list.error || list.length === 0) { 
+          sel.innerHTML = '<option value="">無相符的毛型服務</option>'; 
+          return; 
+        }
+        
+        // 將毛型服務逐一加入下拉選單中
+        list.forEach(function(svc) {
+          var opt = document.createElement('option');
+          opt.value = svc.name;
+          opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
+          sel.add(opt);
+        });
+      })
+      .catch(function(err) {
+        sel.innerHTML = '<option value="">載入失敗，請稍後再試</option>';
+        console.error("載入毛型服務失敗:", err);
+      });
+  }
+
 // 【修改】計算總金額：主服務 + 加購項目 + 毛型項目
   function updateServicePrice() {
     var totalPrice = 0;
@@ -303,6 +341,15 @@
     var hairName = document.getElementById('sel_hairService').value;
     if (hairName) {
       var foundHair = hairList.find(function(h) { return h.name === hairName; });
+      if (foundHair) {
+        totalPrice += Number(foundHair.price);
+      }
+    }
+
+    // 4. 【新增】計算雙層毛型服務金額 (單選)
+    var hairName = document.getElementById('sel_doublhairService').value;
+    if (hairName) {
+      var foundHair = doublehairList.find(function(h) { return h.name === hairName; });
       if (foundHair) {
         totalPrice += Number(foundHair.price);
       }
@@ -341,5 +388,6 @@
 </script>
 </body>
 </html>
+
 
 
