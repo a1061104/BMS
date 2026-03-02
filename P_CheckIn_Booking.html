@@ -124,6 +124,15 @@
           </div>
         </div>
       </div>
+
+      
+      <div class="field-label">選取活動折扣（選填）</div>
+      <div class="info-card">
+        <select id="sel_discount" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 無折扣活動 --</option>
+        </select>
+      </div>
+      
       
       <div class="info-card mt-4">
         <div class="d-flex justify-content-between align-items-center">
@@ -132,12 +141,7 @@
         </div>
       </div>
 
-      <div class="field-label">選取活動折扣（選填）</div>
-      <div class="info-card">
-        <select id="sel_discount" class="form-select form-select-lg" onchange="updateServicePrice()">
-          <option value="">-- 無折扣活動 --</option>
-        </select>
-      </div>
+
       
       <div class="row g-2 mt-4">
         <div class="col-4"><button class="btn btn-outline-secondary btn-lg w-100 py-3" onclick="showStep(1)">上一步</button></div>
@@ -518,6 +522,7 @@
 </script>
 </body>
 </html>
+
 
 
 
