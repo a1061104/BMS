@@ -194,6 +194,7 @@
     loadAddonServices(d.P_Type, d.P_Size); // 【新增】同時載入加購服務
     loadHairServices(d.P_Type, d.P_Size); // 【新增】同時載入毛型服務
     loadDoubleHairServices(d.P_Type, d.P_Size); // 【新增】同時載入毛型服務
+    loadAgeServices(d.P_Type, d.P_Size); // <--- 【補上這行】同時載入年齡層服務
   }
 
   function renderStatusGrid(targetId, data, noneKey, noneLabel, grids, memos) {
@@ -332,7 +333,7 @@
     var sel = document.getElementById('sel_AgeService');
     sel.innerHTML = '<option value="">正在過濾年齡層服務...</option>';
     
-    fetch(GAS_API_URL + "?action=getFilteredDoubleHairServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+    fetch(GAS_API_URL + "?action=getFilteredAgeServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
       .then(function(res) { return res.json(); })
       .then(function(list) {
         ageList = list;
@@ -399,7 +400,8 @@
     // 5. 【修正】計算年齡層服務金額 (單選)
     var age = document.getElementById('sel_AgeService').value;
     if (age) {
-      var foundAge = ageList.find(function(g) { return h.name === age; });
+      // 這裡原本寫 h.name === age，請修正為 g.name === age
+      var foundAge = ageList.find(function(g) { return g.name === age; });
       if (foundAge) {
         totalPrice += Number(foundAge.price);
       }
@@ -438,6 +440,7 @@
 </script>
 </body>
 </html>
+
 
 
 
