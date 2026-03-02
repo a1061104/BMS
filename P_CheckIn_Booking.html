@@ -106,6 +106,13 @@
         </select>
       </div>
 
+      <div class="field-label">選取年齡層（選填）</div>
+      <div class="info-card">
+        <select id="sel_AgeService" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 無加年齡層 --</option>
+        </select>
+      </div>
+      
       <div class="info-card mt-4">
         <div class="d-flex justify-content-between align-items-center">
           <span class="h5 mb-0 fw-bold text-secondary">預估服務金額</span>
@@ -126,7 +133,8 @@
   var serviceList = [];
   var addonList = []; // 新增加購清單陣列
   var hairList = []; // 【新增】存放毛型服務清單
-  var doublehairList = []; // 【新增】存放毛型服務清單
+  var doublehairList = []; // 【新增】存放雙層毛毛型服務清單
+  var ageList = []; // 【新增】存放年齡層服務清單
   var scanner;
 
   function showStep(s) {
@@ -210,6 +218,7 @@
     document.getElementById(targetId).innerHTML = html;
   }
 
+  // 【修改】載入主服務清單 (改為下拉選單單選形式)
   function loadServices(pType, pSize) {
     var sel = document.getElementById('sel_mainService');
     sel.innerHTML = '<option value="">正在過濾服務...</option>';
@@ -318,6 +327,36 @@
       });
   }
 
+  // 【新增】載入年齡層服務清單
+  function loadAgeServices(pType, pSize) {
+    var sel = document.getElementById('sel_AgeService');
+    sel.innerHTML = '<option value="">正在過濾年齡層服務...</option>';
+    
+    fetch(GAS_API_URL + "?action=getFilteredDoubleHairServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        ageList = list;
+        sel.innerHTML = '<option value="">-- 無加選年齡層 --</option>'; // 預設選項
+        
+        if (list.error || list.length === 0) { 
+          sel.innerHTML = '<option value="">無相符的年齡層服務</option>'; 
+          return; 
+        }
+        
+        // 將毛型服務逐一加入下拉選單中
+        list.forEach(function(svc) {
+          var opt = document.createElement('option');
+          opt.value = svc.name;
+          opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
+          sel.add(opt);
+        });
+      })
+      .catch(function(err) {
+        sel.innerHTML = '<option value="">載入失敗，請稍後再試</option>';
+        console.error("載入毛型服務失敗:", err);
+      });
+  }
+
 // 【修改】計算總金額：主服務 + 加購項目 + 毛型項目 + 雙層毛型項目
   function updateServicePrice() {
     var totalPrice = 0;
@@ -357,6 +396,15 @@
       }
     }
 
+    // 5. 【修正】計算年齡層服務金額 (單選)
+    var age = document.getElementById('sel_AgeService').value;
+    if (age) {
+      var foundAge = ageList.find(function(g) { return h.name === age; });
+      if (foundAge) {
+        totalPrice += Number(foundAge.price);
+      }
+    }
+
     // 更新畫面顯示
     document.getElementById('txt_servicePrice').innerText = "$ " + totalPrice.toLocaleString();
   }
@@ -390,6 +438,7 @@
 </script>
 </body>
 </html>
+
 
 
 
