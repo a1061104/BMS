@@ -77,6 +77,13 @@
       <button class="btn btn-primary btn-lg w-100 py-3 mt-4" onclick="showStep(2)">下一步：選取服務</button>
     </div>
 
+    <div class="field-label">選派美容師</div>
+      <div class="info-card">
+        <select id="sel_beautician" class="form-select form-select-lg">
+          <option value="">-- 請選擇美容師 --</option>
+        </select>
+      </div>
+    
     <div id="view_step2" style="display:none;">
       <div class="field-label">選取本次主服務</div>
       <div class="info-card">
@@ -214,13 +221,15 @@
       [{k:'PW_ASB', l:'攻擊性'}, {k:'PW_WN', l:'不親狗'}, {k:'PW_Mani', l:'易緊張'}, {k:'PW_SAD', l:'分離焦慮'}, {k:'PW_DDS', l:'掙扎'}, {k:'PW_PD', l:'不親人'}], 
       [{k:'PW_BWA', m:'PW_BWA_Memo', l:'敏感部位'}, {k:'PW_Other', m:'PW_Other_Memo', l:'其他'}]
     );
-
-    loadServices(d.P_Type, d.P_Size);
+    
+    loadBeauticians(); // 【新增】載入美容師清單
+    loadServices(d.P_Type, d.P_Size);  // 【新增】同時載入主服務
     loadAddonServices(d.P_Type, d.P_Size); // 【新增】同時載入加購服務
     loadHairServices(d.P_Type, d.P_Size); // 【新增】同時載入毛型服務
     loadDoubleHairServices(d.P_Type, d.P_Size); // 【新增】同時載入毛型服務
     loadAgeServices(d.P_Type, d.P_Size); // <--- 【補上這行】同時載入年齡層服務
     loadDiscountActivities(); // 【新增】載入活動折扣清單
+    
   }
 
   function renderStatusGrid(targetId, data, noneKey, noneLabel, grids, memos) {
@@ -244,6 +253,33 @@
     });
     document.getElementById(targetId).innerHTML = html;
   }
+
+  // 【新增】載入美容師清單
+  function loadBeauticians() {
+    var sel = document.getElementById('sel_beautician');
+    sel.innerHTML = '<option value="">正在過濾美容師清單...</option>';
+    
+    // 呼叫新的 API Action
+    fetch(GAS_API_URL + "?action=getBeauticians")
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        sel.innerHTML = '<option value="">-- 請選擇美容師 --</option>'; // 預設選項
+        
+        if (list.error || list.length === 0) return; 
+        
+        list.forEach(function(item) {
+          var opt = document.createElement('option');
+          opt.value = item.name;
+          opt.text = item.name;
+          sel.add(opt);
+        });
+      })
+      .catch(function(err) {
+        sel.innerHTML = '<option value="">載入失敗，請稍後再試</option>';
+        console.error("載入美容師清單失敗:", err);
+      });
+  }
+  
 
   // 【修改】載入主服務清單 (改為下拉選單單選形式)
   function loadServices(pType, pSize) {
@@ -522,6 +558,7 @@
 </script>
 </body>
 </html>
+
 
 
 
