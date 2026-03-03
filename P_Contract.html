@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>簽署美容服務定型化契約</title>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h2>犬、貓美容服務定型化契約</h2>
+        
+        <div class="section">
+            <h4>甲方（消費者）資料補充</h4>
+            <input type="text" id="id_number" placeholder="身分證/居留證號" class="form-control">
+            <input type="text" id="address" placeholder="通訊地址" class="form-control">
+            <input type="text" id="emergency_contact" placeholder="緊急聯絡人" class="form-control">
+            <input type="text" id="emergency_phone" placeholder="緊急聯絡電話" class="form-control">
+        </div>
+
+        <div class="contract-content" style="height: 200px; overflow-y: scroll;">
+            </div>
+
+        <div class="section">
+            <h4>甲方簽章</h4>
+            <canvas id="signature-pad" style="border:1px solid #000; width:100%; height:200px;"></canvas>
+            <button onclick="clearSignature()">清除</button>
+        </div>
+
+        <button class="btn btn-success" onclick="submitContract()">確認簽署並完成報到</button>
+    </div>
+
+    <script>
+        // 初始化簽名板
+        const canvas = document.querySelector("canvas");
+        const signaturePad = new SignaturePad(canvas);
+
+        function submitContract() {
+            // 1. 取得畫布資料 (Base64)
+            const signatureData = signaturePad.toDataURL();
+            // 2. 呼叫 GAS 的 doPost (action: saveContract)
+            // 將簽名、身分證號、地址等傳回 Google Sheets
+        }
+    </script>
+</body>
+</html>
