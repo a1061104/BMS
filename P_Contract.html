@@ -154,7 +154,7 @@
   /**
    * 根據訂單編號抓取客戶資料並自動填入表單
    */
-  function fetchCustomerData(oid) {
+ function fetchCustomerData(oid) {
   fetch(GAS_API_URL + "?action=getCustomerDataByOrderId&orderId=" + oid)
     .then(res => res.json())
     .then(result => {
@@ -164,18 +164,26 @@
       }
       
       const c = result.data;
-      // 將資料填入「可編輯」的輸入框中 [cite: 141, 144, 148]
+      
+      // 1. 填入顧客基本資料 (可編輯)
       document.getElementById('inp_U_Name').value = c.U_Name || "";
       document.getElementById('inp_U_Phone').value = c.U_Phone || "";
       document.getElementById('inp_U_Addr').value = c.U_Addr || "";
       
-      // 更新 view_step2 的標題預覽
+      // 2. 【新增】預帶緊急聯絡人為顧客本人資料
+      // 將 Customer 主檔的姓名與電話自動填入緊急聯絡人欄位
+      document.getElementById('inp_ecName').value = c.U_Name || "";
+      document.getElementById('inp_ecTel').value = c.U_Phone || "";
+      
+      // 3. 更新 view_step2 的訂單摘要標題
       document.getElementById('order_summary').innerHTML = `
         <span class="text-primary">訂單編號：${orderId}</span><br>
         <span class="small">客戶：${c.U_Name}</span>
       `;
     })
-    .catch(err => console.error("API 載入失敗", err));
+    .catch(err => {
+      console.error("API 載入失敗", err);
+    });
 }
 
   // 【核心修正】修正簽名定位不準的問題
@@ -244,6 +252,7 @@
 </script>
 </body>
 </html>
+
 
 
 
