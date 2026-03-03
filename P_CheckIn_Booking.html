@@ -269,7 +269,7 @@
         
         list.forEach(function(item) {
           var opt = document.createElement('option');
-          opt.value = item.name;
+          opt.value = item.id;
           opt.text = item.name;
           sel.add(opt);
         });
@@ -293,7 +293,7 @@
         if (list.error || list.length === 0) { sel.innerHTML = '<option value="">無相符服務</option>'; return; }
         list.forEach(function(svc) {
           var opt = document.createElement('option');
-          opt.value = svc.name;
+          opt.value = svc.id;
           opt.text = svc.name + " ($" + svc.price.toLocaleString() + ")";
           sel.add(opt);
         });
@@ -319,7 +319,7 @@
         // 將加購服務逐一加入下拉選單中
         list.forEach(function(svc) {
           var opt = document.createElement('option');
-          opt.value = svc.name;
+          opt.value = svc.id;
           opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
           sel.add(opt);
         });
@@ -349,7 +349,7 @@
         // 將毛型服務逐一加入下拉選單中
         list.forEach(function(svc) {
           var opt = document.createElement('option');
-          opt.value = svc.name;
+          opt.value = svc.id;
           opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
           sel.add(opt);
         });
@@ -379,7 +379,7 @@
         // 將毛型服務逐一加入下拉選單中
         list.forEach(function(svc) {
           var opt = document.createElement('option');
-          opt.value = svc.name;
+          opt.value = svc.id;
           opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
           sel.add(opt);
         });
@@ -409,7 +409,7 @@
         // 將毛型服務逐一加入下拉選單中
         list.forEach(function(svc) {
           var opt = document.createElement('option');
-          opt.value = svc.name;
+          opt.value = svc.id;
           opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
           sel.add(opt);
         });
@@ -436,7 +436,7 @@
         
         list.forEach(function(item) {
           var opt = document.createElement('option');
-          opt.value = item.name;
+          opt.value = item.id;
           opt.text = item.name; // 下拉選單顯示活動名稱
           sel.add(opt);
         });
@@ -450,77 +450,54 @@
   function updateServicePrice() {
     var totalPrice = 0;
     
-    // 1. 計算主服務金額
-    var mainName = document.getElementById('sel_mainService').value;
-    var foundMain = serviceList.find(function(s) { return s.name === mainName; });
-    if (foundMain) {
-      totalPrice += Number(foundMain.price);
-    }
+    // 1. 計算主服務金額    
+    var mainId = document.getElementById('sel_mainService').value;
+    if (mainId) {
+      var foundMain = serviceList.find(function(s) { return s.id === mainId; }); // 修改為 s.id
+      if (foundMain) totalPrice += Number(foundMain.price);
+    }}
     
     // 2. 計算加購服務金額 (單選)
-    var addonName = document.getElementById('sel_addonService').value;
-    if (addonName) {
-      var foundAddon = addonList.find(function(a) { return a.name === addonName; });
-      if (foundAddon) {
-        totalPrice += Number(foundAddon.price);
-      }
+    var addonId = document.getElementById('sel_addonService').value;
+    if (addonId) {
+      var foundAddon = addonList.find(function(a) { return a.id === addonId; }); // 修改為 a.id
+      if (foundAddon) totalPrice += Number(foundAddon.price);
     }
 
     // 3. 計算毛型服務金額 (單選)
-    var hairName = document.getElementById('sel_hairService').value;
-    if (hairName) {
-      var foundHair = hairList.find(function(h) { return h.name === hairName; });
-      if (foundHair) {
-        totalPrice += Number(foundHair.price);
-      }
+    var hairId = document.getElementById('sel_hairService').value;
+    if (hairId) {
+      var foundHair = hairList.find(function(h) { return h.id === hairId; }); // 修改為 h.id
+      if (foundHair) totalPrice += Number(foundHair.price);
     }
 
     // 4. 【修正】計算雙層毛型服務金額 (單選)
-    var doubleHairElement = document.getElementById('sel_DoublehairService'); // 修正 ID 拼字與大小寫
-    if (doubleHairElement && doubleHairElement.value) {
-      var doubleHairName = doubleHairElement.value;
-      var foundDoubleHair = doublehairList.find(function(d) { return d.name === doubleHairName; }); // 將 h.name 修正為 d.name
-      if (foundDoubleHair) {
-        totalPrice += Number(foundDoubleHair.price);
-      }
+    var doubleHairId = document.getElementById('sel_DoublehairService').value;
+    if (doubleHairId) {
+      var foundDoubleHair = doublehairList.find(function(d) { return d.id === doubleHairId; }); // 修改為 d.id
+      if (foundDoubleHair) totalPrice += Number(foundDoubleHair.price);
     }
 
     // 5. 【修正】計算年齡層服務金額 (單選)
-    var age = document.getElementById('sel_AgeService').value;
-    if (age) {
-      // 這裡原本寫 h.name === age，請修正為 g.name === age
-      var foundAge = ageList.find(function(g) { return g.name === age; });
-      if (foundAge) {
-        totalPrice += Number(foundAge.price);
-      }
+    var ageId = document.getElementById('sel_AgeService').value;
+    if (ageId) {
+      var foundAge = ageList.find(function(g) { return g.id === ageId; }); // 修改為 g.id
+      if (foundAge) totalPrice += Number(foundAge.price);
     }
 
-    // 6. 【新增】計算自訂其他服務金額 (手動輸入)
+    // 自訂其他服務金額 (手動輸入，無ID)
     var otherPrice = document.getElementById('inp_otherServicePrice').value;
-    // 確保有輸入值，且將其轉換為數字後加入總價
     if (otherPrice && !isNaN(otherPrice)) {
       totalPrice += Number(otherPrice);
     }
 
-    // 7. 【新增】計算活動折扣乘數
-    var discountName = document.getElementById('sel_discount').value;
-    if (discountName) {
-      var foundDiscount = discountList.find(function(d) { return d.name === discountName; });
+    // 7. 計算活動折扣乘數
+    var discountId = document.getElementById('sel_discount').value;
+    if (discountId) {
+      var foundDiscount = discountList.find(function(d) { return d.id === discountId; }); // 修改為 d.id
       if (foundDiscount) {
         var discountValue = Number(foundDiscount.value);
-        
-        // 【智慧防呆判斷】
-        // 若您在表中輸入 0.9 或 0.85，代表 9折 或 85折
-        // 若您在表中輸入 90 或 85，代表 9折 或 85折
-        if (discountValue > 1 && discountValue <= 100) {
-          discountValue = discountValue / 100; // 將 90 轉為 0.9
-        } else if (discountValue > 0 && discountValue <= 1) {
-          // 維持原樣 (例如 0.9)
-        } else {
-          discountValue = 1; // 防呆：如果輸入格式錯誤，視為不打折
-        }
-        
-        // 將原價乘以折數，並四捨五入到整數
+        if (discountValue > 1 && discountValue <= 100) { discountValue = discountValue / 100; }
         totalPrice = Math.round(totalPrice * discountValue); 
       }
     }
@@ -528,6 +505,67 @@
     // 更新畫面顯示
     document.getElementById('txt_servicePrice').innerText = "$ " + totalPrice.toLocaleString();
   }
+
+  
+  // 修改 submitOrder()
+  function submitOrder() {
+     var beauticianId = document.getElementById('sel_beautician').value; // 取得的已經是 B_ID
+     if (!beauticianId) {
+       alert("請先選擇負責的美容師！");
+       return;
+     }
+
+     var items = [];
+     var originalPrice = 0;
+
+     // 輔助函式：改用比對 ID
+     function addItem(selId, list, memoStr) {
+       var valId = document.getElementById(selId).value;
+       if (valId) {
+         var found = list.find(function(i) { return i.id === valId; }); // 👈 修改為比對 id
+         if (found) {
+           items.push({ id: found.id, memo: memoStr, price: Number(found.price) }); // 寫入 S_ID
+           originalPrice += Number(found.price);
+         }
+       }
+     }
+
+     addItem('sel_mainService', serviceList, '主服務');
+     addItem('sel_addonService', addonList, '加購服務');
+     addItem('sel_hairService', hairList, '毛型服務');
+     addItem('sel_DoublehairService', doublehairList, '雙層毛型服務');
+     addItem('sel_AgeService', ageList, '年齡層加價');
+
+     // 自訂服務（因為資料庫沒有這項，可自定義一個特殊ID 如 "S_OTHER" 或留空）
+     var otherName = document.getElementById('inp_otherServiceDesc').value;
+     var otherPrice = document.getElementById('inp_otherServicePrice').value;
+     if (otherName && otherPrice && !isNaN(otherPrice)) {
+       items.push({ id: "S_OTHER", memo: '自訂:' + otherName, price: Number(otherPrice) }); // 👈 給定暫代ID
+       originalPrice += Number(otherPrice);
+     }
+
+     if (items.length === 0) {
+       alert("請至少選擇一項服務！");
+       return;
+     }
+
+     var discountId = document.getElementById('sel_discount').value; // 取得的已經是 D_ID
+     var finalPriceStr = document.getElementById('txt_servicePrice').innerText.replace('$ ', '').replace(/,/g, '');
+     var finalPrice = Number(finalPriceStr);
+
+     // 準備 Payload (此時送出的 bId, dId 都是純粹的 ID)
+     var payload = {
+       action: "createOrder",
+       resId: currentResId,
+       uId: currentUID,
+       pId: currentPID,
+       bId: beauticianId, // 👈 傳送 B_ID
+       dId: discountId,   // 👈 傳送 D_ID
+       originalPrice: originalPrice,
+       specialPrice: finalPrice,
+       items: items       // 👈 裡面包的是 S_ID
+     };
+  
 
   function setLoadingState(isLoading) {
     document.getElementById('loadingOverlay').style.display = isLoading ? 'block' : 'none';
@@ -558,6 +596,7 @@
 </script>
 </body>
 </html>
+
 
 
 
