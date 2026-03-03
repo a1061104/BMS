@@ -476,7 +476,7 @@
      var otherName = document.getElementById('inp_otherServiceDesc').value;
      var otherPrice = document.getElementById('inp_otherServicePrice').value;
      if (otherName && otherPrice && !isNaN(otherPrice)) {
-       items.push({ id: "S_OTHER", memo: '自訂:' + otherName, price: Number(otherPrice) });
+       items.push({ id: "S999999999999", memo: otherName, price: Number(otherPrice) });
        originalPrice += Number(otherPrice);
      }
 
@@ -627,6 +627,7 @@ function createOrder(data) {
 </script>
 </body>
 </html>
+
 
 
 
