@@ -121,27 +121,51 @@
 </div>
 
 <script>
-  // 從 URL 僅取得訂單編號
   const urlParams = new URLSearchParams(window.location.search);
   const orderId = urlParams.get('orderId');
-  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec";
-
-  let signaturePad;
+  const GAS_API_URL = "您的 GAS 部署網址"; // 請確認此網址正確
 
   window.onload = function() {
+    // 1. 初始化簽名板
     const canvas = document.getElementById('signature-pad');
-    // 初始化簽名板
-    signaturePad = new SignaturePad(canvas, { 
-      backgroundColor: 'rgb(255, 255, 255)',
-      penColor: 'rgb(0, 0, 0)'
-    });
+    signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgb(255, 255, 255)' });
     
+    // 2. 自動載入客戶資料
     if (orderId) {
       document.getElementById('order_summary').innerText = "訂單編號：" + orderId;
-    } else {
-      document.getElementById('order_summary').innerText = "警告：未偵測到訂單編號";
+      fetchCustomerData(orderId);
     }
   };
+
+  /**
+   * 根據訂單編號抓取客戶資料並自動填入表單
+   */
+  function fetchCustomerData(oid) {
+    fetch(GAS_API_URL + "?action=getCustomerDataByOrderId&orderId=" + oid)
+      .then(res => res.json())
+      .then(result => {
+        if (result.error) {
+          console.error(result.msg);
+          return;
+        }
+        
+        const c = result.data;
+        // 將資料自動填入表單欄位 (假設您的 Customer 表頭包含這些欄位名稱)
+        // 您可以根據需求顯示姓名、電話作為確認
+        document.getElementById('order_summary').innerHTML = `
+          訂單編號：${orderId}<br>
+          客戶姓名：${c.U_Name || '--'} | 電話：${c.U_Phone || '--'}
+        `;
+
+        // 自動填入合約需要的補充資訊 (如果 Customer 表已存有這些資料)
+        if(c.U_IDNumber) document.getElementById('inp_idNumber').value = c.U_IDNumber;
+        if(c.U_Address) document.getElementById('inp_address').value = c.U_Address;
+        if(c.U_ECName) document.getElementById('inp_ecName').value = c.U_ECName;
+        if(c.U_ECTel) document.getElementById('inp_ecTel').value = c.U_ECTel;
+        if(c.U_Vet) document.getElementById('inp_vet').value = c.U_Vet;
+      })
+      .catch(err => console.error("資料載入失敗", err));
+  }
 
   // 【核心修正】修正簽名定位不準的問題
   function resizeCanvas() {
@@ -210,3 +234,4 @@
 </script>
 </body>
 </html>
+
