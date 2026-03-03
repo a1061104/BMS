@@ -551,9 +551,80 @@
       document.getElementById('btn_scan').innerText = '📷 掃描';
     });
   }
+
+
+ /*
+ * 檔案：S_CheckIn_Booking.gs
+ * 用途：將報到資料寫入 Order_H (表頭) 與 Order_I (表身)
+ */
+function createOrder(data) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheetH = ss.getSheetByName(SHEETS.ORDER);
+    var sheetI = ss.getSheetByName(SHEETS.ORDER_I);
+
+    if (!sheetH || !sheetI) {
+      return { error: true, msg: "找不到 Order_H 或 Order_I 工作表，請檢查名稱設定" };
+    }
+
+    // 1. 準備時間戳記與自動產生訂單編號
+    var now = new Date();
+    var dateStr = Utilities.formatDate(now, CONFIG.ZONE, CONFIG.D_FORMAT);
+    var dateTimeStr = Utilities.formatDate(now, CONFIG.ZONE, CONFIG.DT_FORMAT);
+    
+    // 訂單ID邏輯：ORD + 年月日 + 4碼隨機數 (例如：ORD20240520_8192)
+    var orderId = "ORD" + Utilities.formatDate(now, CONFIG.ZONE, "yyyyMMdd") + "_" + Math.floor(1000 + Math.random() * 9000);
+
+    // 2. 寫入 Order_H (表頭檔)
+    // 依序為：R_ID, OH_Date, OH_ID, U_ID, P_ID, B_ID, OH_OP, D_ID, OH_SP, OH_SA_URL, OH_Flag, CreateDate, Update_Time
+    var rowH = [
+      data.resId || "",          // 預約ID
+      dateStr,                   // 訂單日期
+      orderId,                   // 訂單ID
+      data.uId || "",            // 客戶ID
+      data.pId || "",            // 寵物ID
+      data.bId || "",            // 美容師ID
+      data.originalPrice || 0,   // 原價 (由前端加總)
+      data.dId || "",            // 折扣方案ID
+      data.specialPrice || 0,    // 優惠價 (打折後金額)
+      "",                        // 合約存放位置 (預設留空)
+      "1",                       // 訂單狀態 (1: 正常/有效)
+      dateTimeStr,               // 建立時間
+      dateTimeStr                // 更新時間
+    ];
+    sheetH.appendRow(rowH);
+
+    // 3. 寫入 Order_I (表身檔) - 處理多筆明細
+    if (data.items && data.items.length > 0) {
+      var rowsI = data.items.map(function(item) {
+        // 依序為：OH_ID, S_ID, S_Memo, S_Price, Update_Time
+        return [
+          orderId,               // 訂單ID (關聯表頭)
+          item.id,               // 服務ID
+          item.memo,             // 服務備註 (如：主服務、加購、自訂)
+          item.price,            // 價格
+          dateTimeStr            // 更新時間
+        ];
+      });
+
+      // 【效能優化】使用 getRange().setValues() 批次寫入，避免迴圈逐行寫入導致逾時
+      var lastRowI = sheetI.getLastRow();
+      sheetI.getRange(lastRowI + 1, 1, rowsI.length, rowsI[0].length).setValues(rowsI);
+    }
+
+    // 4. (選擇性) 您可以在此處呼叫更新預約單狀態的邏輯，例如將預約單改為「已報到」
+    // updateConfirmStatus(data.resId, "已報到狀態碼");
+
+    return { error: false, msg: "訂單建立成功", orderId: orderId };
+
+  } catch (e) {
+    return { error: true, msg: "資料庫寫入失敗：" + e.toString() };
+  }
+}
 </script>
 </body>
 </html>
+
 
 
 
