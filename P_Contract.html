@@ -1,44 +1,212 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>簽署美容服務定型化契約</title>
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>簽署美容服務定型化契約</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+  <style>
+    :root { --primary-color: #0d566f; --bg-light: #f8fafc; }
+    body { background-color: var(--bg-light); font-family: 'Noto Sans TC', sans-serif; }
+    .step-item { flex: 1; text-align: center; padding: 15px; font-weight: bold; color: #94a3b8; border-bottom: 4px solid #e2e8f0; cursor: pointer; }
+    .step-item.active { color: var(--primary-color); border-bottom-color: var(--primary-color); background: #f0f9ff; }
+    
+    .contract-box { height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; padding: 15px; background: #fff; border-radius: 8px; font-size: 0.9rem; line-height: 1.6; }
+    
+    /* 簽名板容器修正：固定高度並防止溢出 */
+    .signature-wrapper { 
+      border: 2px dashed #cbd5e1; 
+      background: #fff; 
+      border-radius: 12px; 
+      position: relative; 
+      width: 100%; 
+      height: 250px; 
+      overflow: hidden; 
+      touch-action: none;
+    }
+    canvas { 
+      width: 100% !important; 
+      height: 100% !important; 
+      display: block;
+    }
+    .field-label { font-weight: 700; color: var(--primary-color); margin-top: 20px; margin-bottom: 8px; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h2>犬、貓美容服務定型化契約</h2>
-        
-        <div class="section">
-            <h4>甲方（消費者）資料補充</h4>
-            <input type="text" id="id_number" placeholder="身分證/居留證號" class="form-control">
-            <input type="text" id="address" placeholder="通訊地址" class="form-control">
-            <input type="text" id="emergency_contact" placeholder="緊急聯絡人" class="form-control">
-            <input type="text" id="emergency_phone" placeholder="緊急聯絡電話" class="form-control">
+
+<div class="container py-4">
+  <div class="d-flex mb-4 shadow-sm bg-white rounded">
+    <div id="step_tab_1" class="step-item active" onclick="showStep(1)">1. 基本資料</div>
+    <div id="step_tab_2" class="step-item" onclick="showStep(2)">2. 服務確認</div>
+    <div id="step_tab_3" class="step-item">3. 數位簽章</div>
+  </div>
+
+  <div id="view_step1">
+    <div class="card border-0 shadow-sm p-4">
+      <h4 class="fw-bold mb-3">甲方（消費者）資訊補充</h4>
+      <div class="row g-3">
+        <div class="col-md-6">
+          [cite_start]<label class="form-label">身分證/居留證號碼 [cite: 146]</label>
+          <input type="text" id="inp_idNumber" class="form-control" placeholder="請輸入證號">
         </div>
-
-        <div class="contract-content" style="height: 200px; overflow-y: scroll;">
-            </div>
-
-        <div class="section">
-            <h4>甲方簽章</h4>
-            <canvas id="signature-pad" style="border:1px solid #000; width:100%; height:200px;"></canvas>
-            <button onclick="clearSignature()">清除</button>
+        <div class="col-md-12">
+          [cite_start]<label class="form-label">通訊地址 [cite: 147]</label>
+          <input type="text" id="inp_address" class="form-control" placeholder="請輸入完整地址">
         </div>
-
-        <button class="btn btn-success" onclick="submitContract()">確認簽署並完成報到</button>
+        <div class="col-md-6">
+          [cite_start]<label class="form-label">緊急聯絡人姓名 [cite: 149]</label>
+          <input type="text" id="inp_ecName" class="form-control">
+        </div>
+        <div class="col-md-6">
+          [cite_start]<label class="form-label">緊急聯絡人電話 [cite: 150]</label>
+          <input type="tel" id="inp_ecTel" class="form-control">
+        </div>
+        <div class="col-md-12">
+          [cite_start]<label class="form-label">指定就醫之獸醫院 (如無請留空) [cite: 151]</label>
+          <input type="text" id="inp_vet" class="form-control" placeholder="若發生緊急狀況優先送往之場所">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg mt-4 w-100" onclick="showStep(2)">下一步：確認服務內容</button>
     </div>
+  </div>
 
-    <script>
-        // 初始化簽名板
-        const canvas = document.querySelector("canvas");
-        const signaturePad = new SignaturePad(canvas);
+  <div id="view_step2" style="display:none;">
+    <div class="card border-0 shadow-sm p-4">
+      <h4 class="fw-bold mb-3">服務項目與寵物狀況確認</h4>
+      <div class="bg-light p-3 rounded mb-3">
+        <div id="order_summary" class="fw-bold text-secondary">正在讀取訂單資訊...</div>
+      </div>
+      
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="chk_health">
+        <label class="form-check-label" for="chk_health">
+          [cite_start]本人已誠實告知寵物之個性、疾病、病史等生理狀況及其他注意事項 [cite: 168]。
+        </label>
+      </div>
 
-        function submitContract() {
-            // 1. 取得畫布資料 (Base64)
-            const signatureData = signaturePad.toDataURL();
-            // 2. 呼叫 GAS 的 doPost (action: saveContract)
-            // 將簽名、身分證號、地址等傳回 Google Sheets
-        }
-    </script>
+      [cite_start]<label class="form-label fw-bold">約定接回時間 [cite: 229]</label>
+      <input type="time" id="inp_pickupTime" class="form-control form-control-lg mb-4">
+
+      <div class="row g-2">
+        <div class="col-4"><button class="btn btn-outline-secondary w-100 py-3" onclick="showStep(1)">上一步</button></div>
+        <div class="col-8"><button class="btn btn-primary w-100 py-3" onclick="showStep(3)">下一步：簽署契約</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="view_step3" style="display:none;">
+    <div class="card border-0 shadow-sm p-4">
+      <h4 class="fw-bold mb-3">定型化契約條款審閱</h4>
+      <div class="contract-box mb-4">
+        [cite_start]<strong>第一條（契約目的與範圍）[cite: 134][cite_start]</strong><br>本服務指提供犬、貓外表清洗、吹乾、剪毛及造型設計，不得涉及醫療行為 [cite: 135]。<br><br>
+        [cite_start]<strong>第五條（照護義務）[cite: 167][cite_start]</strong><br>乙方應提供安全、乾淨、通風之環境，並避免犬、貓遭受虐待或傷害 [cite: 172, 176]。<br><br>
+        [cite_start]<strong>第十四條（費用明確性）[cite: 243][cite_start]</strong><br>本契約總費用包含商品、服務費等，未明列者乙方不得收取 [cite: 244]。
+        <p class="text-muted mt-3 small text-center">--- 以上為部分條文摘要，簽署即代表同意完整定型化契約內容 ---</p>
+      </div>
+
+      [cite_start]<h5 class="fw-bold">甲方（消費者）簽章 [cite: 130]</h5>
+      <div class="signature-wrapper shadow-sm mb-2">
+        <canvas id="signature-pad"></canvas>
+      </div>
+      <button class="btn btn-sm btn-link text-danger p-0 mb-4" onclick="clearSignature()">清除簽名並重簽</button>
+
+      <div class="row g-2">
+        <div class="col-4"><button class="btn btn-outline-secondary w-100 py-3" onclick="showStep(2)">上一步</button></div>
+        <div class="col-8"><button class="btn btn-success w-100 py-3 fw-bold" onclick="finishContract()">確認簽署並完成報到</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 從 URL 僅取得訂單編號
+  const urlParams = new URLSearchParams(window.location.search);
+  const orderId = urlParams.get('orderId');
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec";
+
+  let signaturePad;
+
+  window.onload = function() {
+    const canvas = document.getElementById('signature-pad');
+    // 初始化簽名板
+    signaturePad = new SignaturePad(canvas, { 
+      backgroundColor: 'rgb(255, 255, 255)',
+      penColor: 'rgb(0, 0, 0)'
+    });
+    
+    if (orderId) {
+      document.getElementById('order_summary').innerText = "訂單編號：" + orderId;
+    } else {
+      document.getElementById('order_summary').innerText = "警告：未偵測到訂單編號";
+    }
+  };
+
+  // 【核心修正】修正簽名定位不準的問題
+  function resizeCanvas() {
+    const canvas = document.getElementById('signature-pad');
+    const rect = canvas.getBoundingClientRect();
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+
+    // 只有在元素可見時才調整，否則座標會亂掉
+    if (rect.width > 0) {
+      canvas.width = rect.width * ratio;
+      canvas.height = rect.height * ratio;
+      canvas.getContext("2d").scale(ratio, ratio);
+      signaturePad.clear(); // 調整大小後必須清除，否則內部快取會偏移
+    }
+  }
+
+  function showStep(s) {
+    [1, 2, 3].forEach(n => {
+      document.getElementById('view_step' + n).style.display = (n === s) ? 'block' : 'none';
+      document.getElementById('step_tab_' + n).className = (n === s) ? 'step-item active' : 'step-item';
+    });
+
+    // 當進入第三步簽名頁時，觸發畫布校準
+    if (s === 3) {
+      setTimeout(resizeCanvas, 100); 
+    }
+    window.scrollTo(0, 0);
+  }
+
+  function clearSignature() { signaturePad.clear(); }
+
+  function finishContract() {
+    if (signaturePad.isEmpty()) { alert("請先完成手寫簽名！"); return; }
+    if (!document.getElementById('chk_health').checked) { alert("請勾選健康狀況告知確認。"); return; }
+
+    const payload = {
+      action: "saveContract",
+      orderId: orderId,
+      idNumber: document.getElementById('inp_idNumber').value,
+      address: document.getElementById('inp_address').value,
+      ecName: document.getElementById('inp_ecName').value,
+      ecTel: document.getElementById('inp_ecTel').value,
+      vet: document.getElementById('inp_vet').value,
+      pickupTime: document.getElementById('inp_pickupTime').value,
+      signature: signaturePad.toDataURL() 
+    };
+
+    // 這裡可以加入 Loading 提示
+    fetch(GAS_API_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) { 
+        alert("簽署失敗：" + data.msg); 
+      } else {
+        alert("✅ 契約簽署完成，報到程序已全部結束！");
+        window.location.href = 'P_index.html';
+      }
+    })
+    .catch(err => {
+      alert("傳輸發生錯誤，請檢查網路連接。");
+    });
+  }
+</script>
 </body>
 </html>
