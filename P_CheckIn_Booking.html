@@ -152,7 +152,7 @@
       
       <div class="row g-2 mt-4">
         <div class="col-4"><button class="btn btn-outline-secondary btn-lg w-100 py-3" onclick="showStep(1)">上一步</button></div>
-        <div class="col-8"><button class="btn btn-success btn-lg w-100 py-3 fw-bold" onclick="alert('報到成功')">確認報到</button></div>
+        <div class="col-8"><button class="btn btn-success btn-lg w-100 py-3 fw-bold" onclick="submitOrder()">確認報到</button></div>
       </div>
     </div>
   </div>
@@ -490,7 +490,7 @@
      var finalPriceStr = document.getElementById('txt_servicePrice').innerText.replace('$ ', '').replace(/,/g, '');
      var finalPrice = Number(finalPriceStr);
 
-     var payload = {
+    var payload = {
        action: "createOrder",
        resId: currentResId,
        uId: currentUID,
@@ -502,10 +502,14 @@
        items: items
      };
 
-     // 【修正點 2】補回送出 API 的邏輯並補上結束的 }
      setLoadingState(true);
+     // 【重要修正】強化 fetch 語法，避免 GAS 的 CORS 或 302 轉址問題
      fetch(GAS_API_URL, {
        method: 'POST',
+       headers: {
+         "Content-Type": "text/plain;charset=utf-8"
+       },
+       redirect: "follow", 
        body: JSON.stringify(payload)
      })
      .then(function(res) { return res.json(); })
@@ -523,7 +527,7 @@
        console.error("Fetch Error:", err);
        alert("發生不可預期的錯誤，請確認 GAS 執行權限");
      });
-  } // 👈 補上這一個大括號
+  } 
 
   function setLoadingState(isLoading) {
     document.getElementById('loadingOverlay').style.display = isLoading ? 'block' : 'none';
@@ -624,6 +628,7 @@ function createOrder(data) {
 </script>
 </body>
 </html>
+
 
 
 
