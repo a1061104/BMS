@@ -13,17 +13,9 @@
         button { padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
         button:hover { background-color: #0056b3; }
         
-        /* 行事曆容器設定 */
-        #calendar {
-            margin-top: 20px;
-            margin-bottom: 30px;
-            min-height: 600px;
-        }
-
-        /* 隱藏 FullCalendar 預設的頭部，因為我們有自己的日期搜尋器 */
+        #calendar { margin-top: 20px; margin-bottom: 30px; min-height: 600px; }
         .fc-header-toolbar { display: none !important; }
 
-        /* 狀態顏色圖例 */
         .legend { display: flex; gap: 15px; margin-bottom: 10px; font-size: 0.9em; }
         .legend-item { display: flex; align-items: center; gap: 5px; }
         .color-box { width: 15px; height: 15px; border-radius: 3px; }
@@ -31,6 +23,32 @@
         table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
         th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
         th { background-color: #f1f1f1; }
+
+        /* ==========================================
+           ★ 新增：QR Code 彈出視窗 (Modal) 的 CSS 樣式
+           ========================================== */
+        .modal-overlay {
+            display: none; /* 預設隱藏 */
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* 半透明黑底 */
+            z-index: 1000;
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background-color: white; padding: 30px; border-radius: 10px;
+            text-align: center; position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .close-btn {
+            position: absolute; top: 10px; right: 15px;
+            font-size: 24px; font-weight: bold; color: #666; cursor: pointer;
+        }
+        .close-btn:hover { color: #000; }
+        .qr-thumbnail {
+            width: 40px; height: 40px; cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .qr-thumbnail:hover { transform: scale(1.1); }
     </style>
 </head>
 <body>
@@ -59,8 +77,7 @@
         <thead>
             <tr>
                 <th>預約ID</th>
-                <th>QR Code</th>
-                <th>時間</th>
+                <th>QR Code</th> <th>時間</th>
                 <th>客戶姓名</th> 
                 <th>聯絡電話</th> 
                 <th>寵物姓名</th> 
@@ -73,13 +90,20 @@
     </table>
 </div>
 
+<div id="qrModal" class="modal-overlay" onclick="closeQrModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeQrModal()">&times;</span>
+        <h3 id="modalTitle" style="margin-top: 0; color: #333;">預約單號</h3>
+        <img id="modalQrImg" src="" alt="QR Code" style="width: 250px; height: 250px; margin-top: 15px;">
+    </div>
+</div>
+
 <script>
-    // 您正確的 GAS 網頁應用程式 URL
+    // 您的 GAS API 網址
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
     
-    let calendar; // 儲存行事曆實例
+    let calendar;
 
-    // 初始化行事曆框架
     document.addEventListener('DOMContentLoaded', function() {
         const calendarEl = document.getElementById('calendar');
         calendar = new FullCalendar.Calendar(calendarEl, {
@@ -92,13 +116,10 @@
             expandRows: true,
             eventClick: function(info) {
                 const props = info.event.extendedProps;
-                // ★ 彈出視窗也加入聯絡電話
                 alert(`預約詳細資訊：\n\n預約單號：${props.rId}\n服務項目：${info.event.title}\n客戶名稱：${props.uName}\n聯絡電話：${props.uPhone}\n寵物名稱：${props.pName}\n美容師：${props.bId}`);
             }
         });
         calendar.render();
-
-        // 預設設定日期為今天，並自動查一次
         document.getElementById('queryDate').value = new Date().toISOString().split('T')[0];
     });
 
@@ -126,25 +147,20 @@
                 return;
             }
 
-            // --- 排序：依據預約開始時間 (R_StartTime) 進行排序 ---
+            // 排序時間
             data.sort((a, b) => {
                 if (!a.R_StartTime) return 1;
                 if (!b.R_StartTime) return -1;
                 return a.R_StartTime.localeCompare(b.R_StartTime);
             });
 
-            // --- 1. 更新行事曆資料 ---
+            // 行事曆資料
             const calendarEvents = data.filter(item => item.R_Flag != "0").map(item => {
-                
-                let eventColor = '#fd7e14'; // 預設：橘色 (1. 客戶已預約：R_Confirm=0, R_CheckIn=0)
-
-                // 2. 店家已確認：R_Confirm=1, R_CheckIn=0
+                let eventColor = '#fd7e14'; // 橘色 (客戶已預約)
                 if (item.R_Confirm == "1" && item.R_CheckIn == "0") {
-                    eventColor = '#007bff'; // 藍色
-                } 
-                // 3. 客戶已報到：R_Confirm=1, R_CheckIn=1
-                else if (item.R_Confirm == "1" && item.R_CheckIn == "1") {
-                    eventColor = '#28a745'; // 綠色
+                    eventColor = '#007bff'; // 藍色 (店家已確認)
+                } else if (item.R_Confirm == "1" && item.R_CheckIn == "1") {
+                    eventColor = '#28a745'; // 綠色 (客戶已報到)
                 }
 
                 return {
@@ -169,14 +185,12 @@
             calendar.addEventSource(calendarEvents);
             document.getElementById('legend').style.display = 'flex';
 
-            // --- 2. 更新下方表格 ---
+            // 表格資料
             if (data.length === 0) {
-                // ★ 這裡改為 colspan="9"
                 tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">此日期無預約紀錄</td></tr>';
             } else {
                 data.forEach(item => {
                     const isCancelled = item.R_Flag == "0";
-                    
                     let statusText = "未知狀態";
                     if (isCancelled) {
                         statusText = "已取消";
@@ -190,13 +204,20 @@
 
                     const rowStyle = isCancelled ? 'style="text-decoration: line-through; color: #999;"' : '';
 
-                    // ★ 產生 QR Code 圖片 (設定大小為 80x80)，並加入點擊可開新視窗放大的功能
-                    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${item.R_ID}`;
-                    const qrCodeImg = isCancelled ? '-' : `<img src="${qrCodeUrl}" alt="QR Code" style="width: 40px; height: 40px; cursor: pointer;" title="點擊放大" onclick="window.open('${qrCodeUrl}')">`;
+                    // ==========================================
+                    // ★ 新增：QR Code 產生與點擊事件
+                    // ==========================================
+                    // 大圖 API (彈出視窗用) 與小圖 API (表格縮圖用)
+                    const qrCodeLarge = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${item.R_ID}`;
+                    const qrCodeThumb = `https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=${item.R_ID}`;
+                    
+                    // 若已取消則不顯示 QR Code，否則綁定 onclick 事件呼叫 openQrModal()
+                    const qrCodeImg = isCancelled ? '-' : `<img src="${qrCodeThumb}" class="qr-thumbnail" title="點擊放大" onclick="openQrModal('${qrCodeLarge}', '${item.R_ID}')">`;
 
                     const row = `<tr ${rowStyle}>
                         <td>${item.R_ID}</td>
-                        <td style="text-align:center; vertical-align:middle;">${qrCodeImg}</td> <td>${item.R_StartTime} - ${item.R_EndTime}</td>
+                        <td style="text-align:center; vertical-align:middle;">${qrCodeImg}</td>
+                        <td>${item.R_StartTime} - ${item.R_EndTime}</td>
                         <td>${item.U_Name}</td>
                         <td>${item.U_Phone || ''}</td>
                         <td>${item.P_Name}</td>
@@ -207,7 +228,6 @@
                     tbody.innerHTML += row;
                 });
             }
-            
             document.getElementById('resultTable').style.display = 'table';
             
         } catch (error) {
@@ -217,9 +237,21 @@
             document.getElementById('loading').style.display = 'none';
         }
     }
+
+    // ==========================================
+    // ★ 新增：控制 QR Code 視窗的兩個 JavaScript 函數
+    // ==========================================
+    function openQrModal(imgUrl, resId) {
+        document.getElementById('modalTitle').innerText = '預約單號：' + resId;
+        document.getElementById('modalQrImg').src = imgUrl; // 替換為大尺寸 QR Code 網址
+        document.getElementById('qrModal').style.display = 'flex'; // 顯示視窗
+    }
+
+    function closeQrModal() {
+        document.getElementById('qrModal').style.display = 'none'; // 隱藏視窗
+        document.getElementById('modalQrImg').src = ''; // 清除圖片避免下次打開前閃爍舊圖
+    }
 </script>
 
 </body>
 </html>
-
-
