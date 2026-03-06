@@ -130,8 +130,8 @@
 
                 return {
                     id: item.R_ID,
-                    // ★ 這裡改接 R_Server_Desc
-                    title: `${item.R_Server_Desc} (${item.B_ID})`, 
+                    // ★ 這裡改接您想要的完整資訊
+                    title: `${item.R_ID} | ${item.U_Name} | ${item.P_Name} | ${item.R_Server_Desc}`, 
                     start: `${item.R_Date}T${item.R_StartTime}:00`, 
                     end: `${item.R_Date}T${item.R_EndTime}:00`,
                     backgroundColor: eventColor,
@@ -182,6 +182,7 @@
 
 </body>
 </html>
+
 
 
 
