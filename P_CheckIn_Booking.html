@@ -1,185 +1,654 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>預約單日行事曆系統</title>
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f9f9f9; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .search-bar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
-        input[type="date"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
-        
-        /* 行事曆容器設定 */
-        #calendar {
-            margin-top: 20px;
-            margin-bottom: 30px;
-            min-height: 600px;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>今日預約報到</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    :root { --primary-color: #0d566f; --bg-light: #f1f5f9; }
+    body { background-color: var(--bg-light); font-family: 'Noto Sans TC', sans-serif; padding: 10px; }
+    .container { max-width: 98% !important; margin: 0 auto; }
+    #reader { width: 100%; max-width: 500px; margin: 0 auto 15px auto; border: 3px solid var(--primary-color); border-radius: 12px; display: none; overflow: hidden; }
+    #loadingOverlay { display: none; text-align: center; padding: 40px; background: #fff; border-radius: 15px; margin-bottom: 20px; }
+    
+    .step-header { display: flex; margin-bottom: 20px; background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; }
+    .step-item { flex: 1; text-align: center; padding: 12px; font-weight: bold; color: #94a3b8; border-bottom: 4px solid transparent; cursor: pointer; }
+    .step-item.active { color: var(--primary-color); border-bottom-color: var(--primary-color); background: #f0f9ff; }
 
-        /* 隱藏 FullCalendar 預設的頭部，因為我們有自己的日期搜尋器 */
-        .fc-header-toolbar { display: none !important; }
-
-        /* 狀態顏色圖例 */
-        .legend { display: flex; gap: 15px; margin-bottom: 10px; font-size: 0.9em; }
-        .legend-item { display: flex; align-items: center; gap: 5px; }
-        .color-box { width: 15px; height: 15px; border-radius: 3px; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
-        th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #f1f1f1; }
-    </style>
+    .field-label { font-weight: 700; color: var(--primary-color); margin-top: 25px; margin-bottom: 12px; font-size: 1.25rem; border-left: 6px solid var(--primary-color); padding-left: 15px; }
+    .info-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 15px; padding: 20px; margin-bottom: 12px; }
+    .info-row { display: flex; flex-wrap: wrap; border-bottom: 1px solid #f1f5f9; padding: 10px 0; }
+    .info-cell { flex: 1; min-width: 45%; display: flex; align-items: flex-start; }
+    .info-label { font-weight: 600; color: #64748b; width: 100px; flex-shrink: 0; }
+    
+    .status-header-box { padding: 15px; border-radius: 12px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; border: 2px solid transparent; }
+    .status-header-box.healthy { background-color: #f0fdf4; color: #166534; border-color: #22c55e; }
+    .status-header-box.warning { background-color: #fff; color: #64748b; border-color: #e2e8f0; }
+    
+    .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+    .grid-item { background: #fff; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; display: flex; align-items: center; font-size: 0.9rem; color: #64748b; }
+    .grid-item.active { border-color: #ef4444; background-color: #fff1f2; color: #b91c1c; font-weight: bold; }
+    
+    .memo-box { background: #fff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; margin-bottom: 10px; }
+    .memo-title { font-weight: bold; color: #334155; margin-bottom: 5px; }
+    .memo-content { color: #64748b; font-size: 0.9rem; padding-left: 25px; }
+    .memo-box.active { border-color: #ef4444; }
+    
+    .badge-blacklist { background: #000; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+  </style>
 </head>
 <body>
-
 <div class="container">
-    <h2>預約行事曆查詢 📅</h2>
-    
-    <div class="search-bar">
-        <label for="queryDate">選擇日期：</label>
-        <input type="date" id="queryDate" required>
-        <button onclick="fetchReservations()">查詢此日預約</button>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold">預約報到</h2>
+  </div>
+
+  <div class="step-header shadow-sm">
+    <div id="step_dot_1" class="step-item active" onclick="showStep(1)">1. 資訊確認</div>
+    <div id="step_dot_2" class="step-item" onclick="showStep(2)">2. 服務選取</div>
+  </div>
+
+  <div id="searchSection" class="info-card shadow-sm">
+    <div id="reader"></div>
+    <div class="input-group">
+      <input type="text" id="inp_rid" class="form-control form-control-lg" placeholder="掃描或輸入單號">
+      <button class="btn btn-dark px-3" id="btn_scan" onclick="toggleScanner()">📷 掃描</button>
+      <button class="btn btn-primary px-4" id="btn_doSearch" onclick="doSearch()">查詢</button>
+    </div>
+  </div>
+
+  <div id="loadingOverlay">
+    <div class="spinner-border text-primary" role="status"></div>
+    <div class="mt-3 h5 fw-bold">讀取資料中...</div>
+  </div>
+
+  <div id="detailView" style="display:none;">
+    <div id="view_step1">
+      <div id="cust_html"></div>
+      <div id="pet_html"></div>
+      <div class="field-label">寵物病史紀錄</div>
+      <div id="sick_html"></div>
+      <div class="field-label">寵物美容注意事項</div>
+      <div id="wary_html"></div>
+      <button class="btn btn-primary btn-lg w-100 py-3 mt-4" onclick="showStep(2)">下一步：選取服務</button>
     </div>
 
-    <div class="legend" id="legend" style="display: none;">
-        <div class="legend-item"><div class="color-box" style="background-color: #28a745;"></div>已確認</div>
-        <div class="legend-item"><div class="color-box" style="background-color: #007bff;"></div>未確認</div>
-        <div class="legend-item"><div class="color-box" style="background-color: #dc3545;"></div>已取消</div>
+    <div id="view_step2" style="display:none;">
+      
+      <div class="info-card">
+        <select id="sel_beautician" class="form-select form-select-lg">
+          <option value="">-- 請選擇美容師 --</option>
+        </select>
+      </div>
+
+      <div class="field-label">選取本次主服務</div>
+      <div class="info-card">
+        <select id="sel_mainService" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 請選擇主服務 --</option>
+        </select>
+      </div>
+      
+      <div class="field-label">選取加購服務（選填）</div>
+      <div class="info-card">
+        <select id="sel_addonService" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 無加購 --</option>
+        </select>
+      </div>
+
+      <div class="field-label">選取毛型（選填）</div>
+      <div class="info-card">
+        <select id="sel_hairService" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 無加選毛型 --</option>
+        </select>
+      </div>
+
+      <div class="field-label">選取雙層毛型（選填）</div>
+      <div class="info-card">
+        <select id="sel_DoublehairService" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 無加選毛型 --</option>
+        </select>
+      </div>
+
+      <div class="field-label">選取年齡層（選填）</div>
+      <div class="info-card">
+        <select id="sel_AgeService" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 無加年齡層 --</option>
+        </select>
+      </div>
+
+      <div class="field-label">自訂其他服務（選填）</div>
+      <div class="info-card">
+        <div class="row g-2">
+          <div class="col-8">
+            <input type="text" id="inp_otherServiceDesc" class="form-control form-control-lg" placeholder="請輸入服務內容 (如: 拆結費)">
+          </div>
+          <div class="col-4">
+            <input type="number" id="inp_otherServicePrice" class="form-control form-control-lg" placeholder="金額" min="0" oninput="updateServicePrice()">
+          </div>
+        </div>
+      </div>
+
+      
+      <div class="field-label">選取活動折扣（選填）</div>
+      <div class="info-card">
+        <select id="sel_discount" class="form-select form-select-lg" onchange="updateServicePrice()">
+          <option value="">-- 無折扣活動 --</option>
+        </select>
+      </div>
+      
+      
+      <div class="info-card mt-4">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="h5 mb-0 fw-bold text-secondary">預估服務金額</span>
+          <span id="txt_servicePrice" class="h2 mb-0 fw-bold text-danger">$ 0</span>
+        </div>
+      </div>
+
+
+      
+      <div class="row g-2 mt-4">
+        <div class="col-4"><button class="btn btn-outline-secondary btn-lg w-100 py-3" onclick="showStep(1)">上一步</button></div>
+        <div class="col-8"><button class="btn btn-success btn-lg w-100 py-3 fw-bold" onclick="submitOrder()">確認報到</button></div>
+      </div>
     </div>
-
-    <div id="loading" style="display: none; color: #666;">資料載入與繪圖中，請稍候...</div>
-
-    <div id="calendar"></div>
-
-    <table id="resultTable" style="display: none;">
-        <thead>
-            <tr>
-                <th>預約ID</th>
-                <th>時間</th>
-                <th>客戶/寵物 ID</th>
-                <th>服務項目</th>
-                <th>美容師ID</th>
-                <th>狀態</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+  </div>
 </div>
 
 <script>
-    // ⚠️ 請記得替換為您正確的 GAS 網頁應用程式 URL
-    const GAS_WEB_APP_URL = "您的_GAS_網頁應用程式_URL"; 
+  // !!! 請將這裡換成您最新的 GAS Web App URL !!!
+  var GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
+  var serviceList = [];
+  var addonList = []; 
+  var hairList = []; 
+  var doublehairList = []; 
+  var ageList = []; 
+  var discountList = []; 
+  var scanner;
+
+  // 記錄當前預約資訊
+  var currentResId = "";
+  var currentUID = "";
+  var currentPID = "";
+
+  function showStep(s) {
+    document.getElementById('view_step1').style.display = (s === 1) ? 'block' : 'none';
+    document.getElementById('view_step2').style.display = (s === 2) ? 'block' : 'none';
+    document.getElementById('step_dot_1').className = (s === 1) ? 'step-item active' : 'step-item';
+    document.getElementById('step_dot_2').className = (s === 2) ? 'step-item active' : 'step-item';
+    window.scrollTo(0, 0);
+  }
+
+  function doSearch() {
+    var rid = document.getElementById('inp_rid').value.trim();
+    if (!rid) return;
+    currentResId = rid; // 記錄預約單號
+    setLoadingState(true);
     
-    let calendar; // 儲存行事曆實例
+    fetch(GAS_API_URL + "?action=searchBookingById&resId=" + rid)
+      .then(function(res) { return res.json(); })
+      .then(function(d) {
+        setLoadingState(false);
+        if (d.error) { alert(d.msg); return; }
+        renderAll(d);
+        showStep(1);
+      })
+      .catch(function(err) { 
+        setLoadingState(false); 
+        console.error("Fetch Error:", err); 
+        alert("查詢出錯，請確認 GAS API 部署權限是否為「所有人(Anyone)」"); 
+      });
+  }
 
-    // 初始化行事曆框架 (剛載入網頁時執行)
-    document.addEventListener('DOMContentLoaded', function() {
-        const calendarEl = document.getElementById('calendar');
-        calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'timeGridDay', // 單日時間軸視圖
-            locale: 'zh-tw',            // 中文語系
-            allDaySlot: false,          // 隱藏「全天」區塊
-            slotMinTime: '08:00:00',    // 行事曆起始時間 (可依營業時間修改)
-            slotMaxTime: '22:00:00',    // 行事曆結束時間 (可依營業時間修改)
-            slotDuration: '00:30:00',   // 每格時間間距 (30分鐘)
-            expandRows: true,           // 自動延展高度
-            eventClick: function(info) {
-                // 點擊行事曆事件時，跳出詳細資訊
-                const props = info.event.extendedProps;
-                alert(`預約詳細資訊：\n\n預約單號：${props.rId}\n服務項目：${info.event.title}\n客戶ID：${props.uId}\n寵物ID：${props.pId}\n美容師：${props.bId}`);
-            }
-        });
-        calendar.render();
+  function renderAll(d) {
+    currentUID = d.U_ID || ""; // 記錄客戶 ID
+    currentPID = d.P_ID || ""; // 記錄寵物 ID
 
-        // 預設設定日期為今天，並自動查一次
-        document.getElementById('queryDate').value = new Date().toISOString().split('T')[0];
+    var custHtml = '<div class="field-label">顧客基本資料 (ID: ' + (d.U_ID || '--') + ')</div>' +
+      '<div class="info-card">' +
+        '<div class="info-row"><div class="info-cell"><span class="info-label">名稱</span><span class="info-val">' + d.U_Name + (d.U_Flag==99?' <span class="badge-blacklist">黑名單</span>':'') + '</span></div><div class="info-cell"><span class="info-label">電話</span><span class="info-val">' + (d.U_Phone || '---') + '</span></div></div>' +
+        '<div class="info-row" style="border:none"><div class="info-cell"><span class="info-label">客戶備註</span><span class="info-val">' + (d.U_Memo || '無') + '</span></div></div>' +
+      '</div>';
+    document.getElementById('cust_html').innerHTML = custHtml;
+
+    var petHtml = '<div class="field-label">寵物基本資料</div>' +
+      '<div class="info-card">' +
+        '<div class="info-row"><div class="info-cell"><span class="info-label">寵物名稱</span><span class="info-val">' + d.P_Name + '</span></div><div class="info-cell"><span class="info-label">類型/性別</span><span class="info-val">' + d.P_Type + ' / ' + d.P_Sex + '</span></div></div>' +
+        '<div class="info-row"><div class="info-cell"><span class="info-label">品種/體型</span><span class="info-val">' + d.P_Breeds + ' / ' + d.P_Size + '</span></div><div class="info-cell"><span class="info-label">體重</span><span class="info-val">' + d.P_Weight + ' kg</span></div></div>' +
+      '</div>';
+    document.getElementById('pet_html').innerHTML = petHtml;
+
+    renderStatusGrid('sick_html', d, 'PS_None', '健康無疾病', 
+      [{k:'PS_CKD', l:'慢性腎衰竭'}, {k:'PS_RV', l:'狂犬病'}, {k:'PS_HI', l:'聽力受損'}, {k:'PS_VI', l:'視力受損'}, {k:'PS_HWD', l:'行動不便'}, {k:'PS_GI', l:'癲癇'}, {k:'PS_CDV', l:'犬瘟熱'}, {k:'PS_PIV', l:'氣管塌陷'}, {k:'PS_HD', l:'心臟病'}, {k:'PS_Asth', l:'氣喘(易喘)'}], 
+      [{k:'PS_DL', m:'PS_DL_Memo', l:'關節脫臼'}, {k:'PS_NTDs', m:'PS_NTDs_Memo', l:'寄生蟲感染'}, {k:'PS_OA', m:'PS_OA_Memo', l:'骨骼舊傷'}, {k:'PS_AD', m:'PS_AD_Memo', l:'皮膚疾病'}, {k:'PS_Other', m:'PS_Other_Memo', l:'其他'}]
+    );
+
+    renderStatusGrid('wary_html', d, 'PW_None', '無須注意事項', 
+      [{k:'PW_ASB', l:'攻擊性'}, {k:'PW_WN', l:'不親狗'}, {k:'PW_Mani', l:'易緊張'}, {k:'PW_SAD', l:'分離焦慮'}, {k:'PW_DDS', l:'掙扎'}, {k:'PW_PD', l:'不親人'}], 
+      [{k:'PW_BWA', m:'PW_BWA_Memo', l:'敏感部位'}, {k:'PW_Other', m:'PW_Other_Memo', l:'其他'}]
+    );
+    
+    loadBeauticians();
+    loadServices(d.P_Type, d.P_Size);
+    loadAddonServices(d.P_Type, d.P_Size);
+    loadHairServices(d.P_Type, d.P_Size);
+    loadDoubleHairServices(d.P_Type, d.P_Size);
+    loadAgeServices(d.P_Type, d.P_Size);
+    loadDiscountActivities();
+  }
+
+  function renderStatusGrid(targetId, data, noneKey, noneLabel, grids, memos) {
+    var isHealthy = data[noneKey] == 1;
+    var html = '<div class="status-header-box ' + (isHealthy ? 'healthy' : 'warning') + '">' +
+               '<input type="checkbox" ' + (isHealthy ? 'checked' : '') + ' disabled class="me-2"> ' + noneLabel + '</div>';
+    
+    html += '<div class="grid-container">';
+    grids.forEach(function(item) {
+      var active = data[item.k] == 1;
+      html += '<div class="grid-item ' + (active ? 'active' : '') + '"><input type="checkbox" ' + (active ? 'checked' : '') + ' disabled class="me-2"> ' + item.l + '</div>';
     });
+    html += '</div>';
 
-    async function fetchReservations() {
-        const dateInput = document.getElementById('queryDate').value;
-        if (!dateInput) {
-            alert('請先選擇日期！');
-            return;
-        }
+    memos.forEach(function(item) {
+      var active = data[item.k] == 1;
+      html += '<div class="memo-box ' + (active ? 'active' : '') + '">' +
+                '<div class="memo-title"><input type="checkbox" ' + (active ? 'checked' : '') + ' disabled class="me-2"> ' + item.l + ' 說明</div>' +
+                '<div class="memo-content">' + (data[item.m] || '---') + '</div>' +
+              '</div>';
+    });
+    document.getElementById(targetId).innerHTML = html;
+  }
 
-        document.getElementById('loading').style.display = 'block';
-        document.getElementById('legend').style.display = 'none';
-        document.getElementById('resultTable').style.display = 'none';
-        
-        const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = ''; 
+  function loadBeauticians() {
+    var sel = document.getElementById('sel_beautician');
+    sel.innerHTML = '<option value="">正在過濾美容師清單...</option>';
+    fetch(GAS_API_URL + "?action=getBeauticians")
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        sel.innerHTML = '<option value="">-- 請選擇美容師 --</option>';
+        if (list.error || list.length === 0) return; 
+        list.forEach(function(item) {
+          var opt = document.createElement('option');
+          opt.value = item.id;
+          opt.text = item.name;
+          sel.add(opt);
+        });
+      })
+      .catch(function(err) {
+        sel.innerHTML = '<option value="">載入失敗，請稍後再試</option>';
+      });
+  }
 
-        try {
-            const targetUrl = `${GAS_WEB_APP_URL}?action=getReservationsByDate&date=${dateInput}`;
-            const response = await fetch(targetUrl);
-            const data = await response.json();
+  function loadServices(pType, pSize) {
+    var sel = document.getElementById('sel_mainService');
+    sel.innerHTML = '<option value="">正在過濾服務...</option>';
+    fetch(GAS_API_URL + "?action=getFilteredServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        serviceList = list;
+        sel.innerHTML = '<option value="">-- 請選擇主服務 --</option>';
+        if (list.error || list.length === 0) { sel.innerHTML = '<option value="">無相符服務</option>'; return; }
+        list.forEach(function(svc) {
+          var opt = document.createElement('option');
+          opt.value = svc.id;
+          opt.text = svc.name + " ($" + svc.price.toLocaleString() + ")";
+          sel.add(opt);
+        });
+      });
+  }
 
-            if (data.error) {
-                alert('後端發生錯誤: ' + data.msg);
-                return;
-            }
+  function loadAddonServices(pType, pSize) {
+    var sel = document.getElementById('sel_addonService');
+    sel.innerHTML = '<option value="">正在過濾加購服務...</option>';
+    fetch(GAS_API_URL + "?action=getFilteredAddonServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        addonList = list;
+        sel.innerHTML = '<option value="">-- 無加購 --</option>';
+        if (list.error || list.length === 0) { sel.innerHTML = '<option value="">無相符的加購服務</option>'; return; }
+        list.forEach(function(svc) {
+          var opt = document.createElement('option');
+          opt.value = svc.id;
+          opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
+          sel.add(opt);
+        });
+      })
+      .catch(function(err) { sel.innerHTML = '<option value="">載入失敗</option>'; });
+  }
 
-            // --- 1. 更新行事曆資料 ---
-            // 將 GAS 拿到的資料轉換為 FullCalendar 看得懂的 Event 物件
-            const calendarEvents = data.map(item => {
-                // 判斷顏色：取消(紅)、已確認(綠)、未確認(藍)
-                let eventColor = '#007bff'; // 預設藍色(未確認)
-                if (item.R_Flag == "0") eventColor = '#dc3545'; // 紅色(已取消)
-                else if (item.R_Confirm == "1") eventColor = '#28a745'; // 綠色(已確認)
+  function loadHairServices(pType, pSize) {
+    var sel = document.getElementById('sel_hairService');
+    sel.innerHTML = '<option value="">正在過濾毛型服務...</option>';
+    fetch(GAS_API_URL + "?action=getFilteredHairServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        hairList = list;
+        sel.innerHTML = '<option value="">-- 無加選毛型 --</option>';
+        if (list.error || list.length === 0) { sel.innerHTML = '<option value="">無相符的毛型服務</option>'; return; }
+        list.forEach(function(svc) {
+          var opt = document.createElement('option');
+          opt.value = svc.id;
+          opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
+          sel.add(opt);
+        });
+      })
+      .catch(function(err) { sel.innerHTML = '<option value="">載入失敗</option>'; });
+  }
 
-                return {
-                    id: item.R_ID,
-                    title: `${item.R_Server} (${item.B_ID})`, // 顯示在方塊上的文字
-                    start: `${item.R_Date}T${item.R_StartTime}:00`, // 組合出 ISO 格式時間
-                    end: `${item.R_Date}T${item.R_EndTime}:00`,
-                    backgroundColor: eventColor,
-                    borderColor: eventColor,
-                    extendedProps: {
-                        uId: item.U_ID,
-                        pId: item.P_ID,
-                        bId: item.B_ID,
-                        rId: item.R_ID
-                    }
-                };
-            });
+  function loadDoubleHairServices(pType, pSize) {
+    var sel = document.getElementById('sel_DoublehairService');
+    sel.innerHTML = '<option value="">正在過濾毛型服務...</option>';
+    fetch(GAS_API_URL + "?action=getFilteredDoubleHairServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        doublehairList = list;
+        sel.innerHTML = '<option value="">-- 無加選毛型 --</option>';
+        if (list.error || list.length === 0) { sel.innerHTML = '<option value="">無相符的毛型服務</option>'; return; }
+        list.forEach(function(svc) {
+          var opt = document.createElement('option');
+          opt.value = svc.id;
+          opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
+          sel.add(opt);
+        });
+      })
+      .catch(function(err) { sel.innerHTML = '<option value="">載入失敗</option>'; });
+  }
 
-            // 將行事曆移動到查詢的日期
-            calendar.gotoDate(dateInput);
-            // 清空舊事件，加入新事件
-            calendar.removeAllEvents();
-            calendar.addEventSource(calendarEvents);
-            document.getElementById('legend').style.display = 'flex';
+  function loadAgeServices(pType, pSize) {
+    var sel = document.getElementById('sel_AgeService');
+    sel.innerHTML = '<option value="">正在過濾年齡層服務...</option>';
+    fetch(GAS_API_URL + "?action=getFilteredAgeServices&pType=" + encodeURIComponent(pType) + "&pSize=" + encodeURIComponent(pSize))
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        ageList = list;
+        sel.innerHTML = '<option value="">-- 無加選年齡層 --</option>';
+        if (list.error || list.length === 0) { sel.innerHTML = '<option value="">無相符的年齡層服務</option>'; return; }
+        list.forEach(function(svc) {
+          var opt = document.createElement('option');
+          opt.value = svc.id;
+          opt.text = svc.name + " (+ $" + svc.price.toLocaleString() + ")";
+          sel.add(opt);
+        });
+      })
+      .catch(function(err) { sel.innerHTML = '<option value="">載入失敗</option>'; });
+  }
 
-            // --- 2. 更新下方表格 (保留給需要看清單的人) ---
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">此日期無預約紀錄</td></tr>';
-            } else {
-                data.forEach(item => {
-                    const statusText = item.R_Flag == "0" ? "已取消" : (item.R_Confirm == "1" ? "已確認" : "未確認");
-                    const row = `<tr>
-                        <td>${item.R_ID}</td>
-                        <td>${item.R_StartTime} - ${item.R_EndTime}</td>
-                        <td>${item.U_ID} / ${item.P_ID}</td>
-                        <td>${item.R_Server}</td>
-                        <td>${item.B_ID}</td>
-                        <td>${statusText}</td>
-                    </tr>`;
-                    tbody.innerHTML += row;
-                });
-            }
-            document.getElementById('resultTable').style.display = 'table';
-            
-        } catch (error) {
-            console.error("Fetch Error:", error);
-            alert("連線失敗，請檢查網址是否正確，或查看網頁主控台 (Console)");
-        } finally {
-            document.getElementById('loading').style.display = 'none';
-        }
+  function loadDiscountActivities() {
+    var sel = document.getElementById('sel_discount');
+    sel.innerHTML = '<option value="">正在過濾活動清單...</option>';
+    fetch(GAS_API_URL + "?action=getDiscountActivities")
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        discountList = list;
+        sel.innerHTML = '<option value="">-- 無折扣活動 --</option>';
+        if (list.error || list.length === 0) return; 
+        list.forEach(function(item) {
+          var opt = document.createElement('option');
+          opt.value = item.id;
+          opt.text = item.name;
+          sel.add(opt);
+        });
+      })
+      .catch(function(err) { sel.innerHTML = '<option value="">載入失敗</option>'; });
+  }
+
+  function updateServicePrice() {
+    var totalPrice = 0;
+    
+    var mainId = document.getElementById('sel_mainService').value;
+    if (mainId) {
+      var foundMain = serviceList.find(function(s) { return s.id === mainId; });
+      if (foundMain) totalPrice += Number(foundMain.price);
+    } 
+    // 【修正點 1】這裡移除了多餘的 }
+    
+    var addonId = document.getElementById('sel_addonService').value;
+    if (addonId) {
+      var foundAddon = addonList.find(function(a) { return a.id === addonId; });
+      if (foundAddon) totalPrice += Number(foundAddon.price);
     }
-</script>
 
+    var hairId = document.getElementById('sel_hairService').value;
+    if (hairId) {
+      var foundHair = hairList.find(function(h) { return h.id === hairId; });
+      if (foundHair) totalPrice += Number(foundHair.price);
+    }
+
+    var doubleHairId = document.getElementById('sel_DoublehairService').value;
+    if (doubleHairId) {
+      var foundDoubleHair = doublehairList.find(function(d) { return d.id === doubleHairId; });
+      if (foundDoubleHair) totalPrice += Number(foundDoubleHair.price);
+    }
+
+    var ageId = document.getElementById('sel_AgeService').value;
+    if (ageId) {
+      var foundAge = ageList.find(function(g) { return g.id === ageId; });
+      if (foundAge) totalPrice += Number(foundAge.price);
+    }
+
+    var otherPrice = document.getElementById('inp_otherServicePrice').value;
+    if (otherPrice && !isNaN(otherPrice)) {
+      totalPrice += Number(otherPrice);
+    }
+
+    var discountId = document.getElementById('sel_discount').value;
+    if (discountId) {
+      var foundDiscount = discountList.find(function(d) { return d.id === discountId; });
+      if (foundDiscount) {
+        var discountValue = Number(foundDiscount.value);
+        if (discountValue > 1 && discountValue <= 100) { discountValue = discountValue / 100; }
+        totalPrice = Math.round(totalPrice * discountValue); 
+      }
+    }
+
+    document.getElementById('txt_servicePrice').innerText = "$ " + totalPrice.toLocaleString();
+  }
+
+  function submitOrder() {
+     var beauticianId = document.getElementById('sel_beautician').value;
+     if (!beauticianId) {
+       alert("請先選擇負責的美容師！");
+       return;
+     }
+
+     var items = [];
+     var originalPrice = 0;
+
+     function addItem(selId, list, memoStr) {
+       var valId = document.getElementById(selId).value;
+       if (valId) {
+         var found = list.find(function(i) { return i.id === valId; });
+         if (found) {
+           items.push({ id: found.id, memo: memoStr, price: Number(found.price) });
+           originalPrice += Number(found.price);
+         }
+       }
+     }
+
+     addItem('sel_mainService', serviceList, '主服務');
+     addItem('sel_addonService', addonList, '加購服務');
+     addItem('sel_hairService', hairList, '毛型服務');
+     addItem('sel_DoublehairService', doublehairList, '雙層毛型服務');
+     addItem('sel_AgeService', ageList, '年齡層加價');
+
+     var otherName = document.getElementById('inp_otherServiceDesc').value;
+     var otherPrice = document.getElementById('inp_otherServicePrice').value;
+     if (otherName && otherPrice && !isNaN(otherPrice)) {
+       items.push({ id: "S999999999999", memo: otherName, price: Number(otherPrice) });
+       originalPrice += Number(otherPrice);
+     }
+
+     if (items.length === 0) {
+       alert("請至少選擇一項服務！");
+       return;
+     }
+
+     var discountId = document.getElementById('sel_discount').value;
+     var finalPriceStr = document.getElementById('txt_servicePrice').innerText.replace('$ ', '').replace(/,/g, '');
+     var finalPrice = Number(finalPriceStr);
+
+    var payload = {
+       action: "createOrder",
+       resId: currentResId,
+       uId: currentUID,
+       pId: currentPID,
+       bId: beauticianId,
+       dId: discountId,
+       originalPrice: originalPrice,
+       specialPrice: finalPrice,
+       items: items
+     };
+
+     setLoadingState(true);
+     // 【重要修正】強化 fetch 語法，避免 GAS 的 CORS 或 302 轉址問題
+     fetch(GAS_API_URL, {
+       method: 'POST',
+       headers: {
+         "Content-Type": "text/plain;charset=utf-8"
+       },
+       redirect: "follow", 
+       body: JSON.stringify(payload)
+     })
+     .then(function(res) { return res.json(); })
+    .then(function(data) {
+       setLoadingState(false);
+       if (data.error) {
+         alert("建立訂單失敗：" + data.msg);
+       } else {
+         alert("✅ 報到成功！已產生單號：" + data.orderId);
+         // 【關鍵跳轉語法】
+         // 使用 URL 參數傳遞 orderId 與 resId
+         // currentResId 是在搜尋時記錄的全域變數 [cite: 1]
+         window.location.href = 'P_Contract.html?orderId=' + data.orderId;
+       }
+     })
+     .catch(function(err) {
+       setLoadingState(false);
+       console.error("Fetch Error:", err);
+       alert("發生不可預期的錯誤，請確認 GAS 執行權限");
+     });
+  } 
+
+  function setLoadingState(isLoading) {
+    document.getElementById('loadingOverlay').style.display = isLoading ? 'block' : 'none';
+    document.getElementById('detailView').style.display = isLoading ? 'none' : 'block';
+  }
+
+  function toggleScanner() {
+    var reader = document.getElementById('reader');
+    var btn = document.getElementById('btn_scan');
+    if (!scanner || !scanner.isScanning) {
+      reader.style.display = 'block';
+      btn.innerText = '❌ 關閉';
+      scanner = new Html5Qrcode("reader");
+      scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, function(text) {
+        document.getElementById('inp_rid').value = text;
+        stopScanner();
+        doSearch();
+      });
+    } else { stopScanner(); }
+  }
+
+  function stopScanner() {
+    if (scanner) scanner.stop().then(function() {
+      document.getElementById('reader').style.display = 'none';
+      document.getElementById('btn_scan').innerText = '📷 掃描';
+    });
+  }
+
+
+ /*
+ * 檔案：S_CheckIn_Booking.gs
+ * 用途：將報到資料寫入 Order_H (表頭) 與 Order_I (表身)
+ */
+function createOrder(data) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheetH = ss.getSheetByName(SHEETS.ORDER);
+    var sheetI = ss.getSheetByName(SHEETS.ORDER_I);
+
+    if (!sheetH || !sheetI) {
+      return { error: true, msg: "找不到 Order_H 或 Order_I 工作表，請檢查名稱設定" };
+    }
+
+    // 1. 準備時間戳記與自動產生訂單編號
+    var now = new Date();
+    var dateStr = Utilities.formatDate(now, CONFIG.ZONE, CONFIG.D_FORMAT);
+    var dateTimeStr = Utilities.formatDate(now, CONFIG.ZONE, CONFIG.DT_FORMAT);
+    
+    // 訂單ID邏輯：ORD + 年月日 + 4碼隨機數 (例如：ORD20240520_8192)
+    var orderId = "ORD" + Utilities.formatDate(now, CONFIG.ZONE, "yyyyMMdd") + "_" + Math.floor(1000 + Math.random() * 9000);
+
+    // 2. 寫入 Order_H (表頭檔)
+    // 依序為：R_ID, OH_Date, OH_ID, U_ID, P_ID, B_ID, OH_OP, D_ID, OH_SP, OH_SA_URL, OH_Flag, CreateDate, Update_Time
+    var rowH = [
+      data.resId || "",          // 預約ID
+      dateStr,                   // 訂單日期
+      orderId,                   // 訂單ID
+      data.uId || "",            // 客戶ID
+      data.pId || "",            // 寵物ID
+      data.bId || "",            // 美容師ID
+      data.originalPrice || 0,   // 原價 (由前端加總)
+      data.dId || "",            // 折扣方案ID
+      data.specialPrice || 0,    // 優惠價 (打折後金額)
+      "",                        // 合約存放位置 (預設留空)
+      "1",                       // 訂單狀態 (1: 正常/有效)
+      dateTimeStr,               // 建立時間
+      dateTimeStr                // 更新時間
+    ];
+    sheetH.appendRow(rowH);
+
+    // 3. 寫入 Order_I (表身檔) - 處理多筆明細
+    if (data.items && data.items.length > 0) {
+      var rowsI = data.items.map(function(item) {
+        // 依序為：OH_ID, S_ID, S_Memo, S_Price, Update_Time
+        return [
+          orderId,               // 訂單ID (關聯表頭)
+          item.id,               // 服務ID
+          item.memo,             // 服務備註 (如：主服務、加購、自訂)
+          item.price,            // 價格
+          dateTimeStr            // 更新時間
+        ];
+      });
+
+      // 【效能優化】使用 getRange().setValues() 批次寫入，避免迴圈逐行寫入導致逾時
+      var lastRowI = sheetI.getLastRow();
+      sheetI.getRange(lastRowI + 1, 1, rowsI.length, rowsI[0].length).setValues(rowsI);
+    }
+
+    // 4. (選擇性) 您可以在此處呼叫更新預約單狀態的邏輯，例如將預約單改為「已報到」
+    // updateConfirmStatus(data.resId, "已報到狀態碼");
+
+    return { error: false, msg: "訂單建立成功", orderId: orderId };
+
+  } catch (e) {
+    return { error: true, msg: "資料庫寫入失敗：" + e.toString() };
+  }
+}
+</script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
