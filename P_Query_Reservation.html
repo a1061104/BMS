@@ -25,7 +25,7 @@
         th { background-color: #f1f1f1; }
 
         /* ==========================================
-           🌟 優化版 QR Code 彈出視窗 (Modal) 的 CSS 樣式
+           🌟 優化版 QR Code 彈出視窗 (Modal) - 極簡版
            ========================================== */
         .modal-overlay {
             display: none; 
@@ -46,7 +46,7 @@
             text-align: center; 
             position: relative;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            width: 90%; max-width: 380px;
+            width: 90%; max-width: 320px;
             transform: scale(0.8);
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
             overflow: hidden;
@@ -62,30 +62,12 @@
         .modal-header h3 { margin: 0; font-size: 1.25rem; color: #1e293b; font-weight: 700; }
         .close-btn { font-size: 26px; font-weight: bold; color: #94a3b8; cursor: pointer; line-height: 1; }
         .close-btn:hover { color: #475569; }
-        .modal-body { padding: 24px 20px; }
+        .modal-body { padding: 30px 20px; }
         #modalQrImg { 
             width: 200px; height: 200px; 
             border: 8px solid #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
-            border-radius: 12px; margin-bottom: 16px;
+            border-radius: 12px;
         }
-        .modal-details {
-            background: #f1f5f9; padding: 12px 16px; border-radius: 10px;
-            text-align: left; font-size: 0.95rem; color: #334155;
-        }
-        .modal-details p { margin: 6px 0; display: flex; justify-content: space-between; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px; }
-        .modal-details p:last-child { border-bottom: none; padding-bottom: 0; }
-        .modal-footer {
-            padding: 16px 20px; border-top: 1px solid #e2e8f0;
-            background-color: #f8fafc; display: flex; gap: 10px;
-        }
-        .modal-footer button { 
-            flex: 1; padding: 10px; border: none; border-radius: 8px; 
-            font-weight: 600; cursor: pointer; transition: all 0.2s; 
-        }
-        .btn-download { background-color: #3b82f6; color: white; }
-        .btn-download:hover { background-color: #2563eb; transform: translateY(-1px); }
-        .btn-close-modal { background-color: #e2e8f0; color: #475569; }
-        .btn-close-modal:hover { background-color: #cbd5e1; }
         .qr-thumbnail { width: 40px; height: 40px; cursor: pointer; transition: transform 0.2s; border-radius: 4px; }
         .qr-thumbnail:hover { transform: scale(1.15); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
     </style>
@@ -137,12 +119,6 @@
         </div>
         <div class="modal-body">
             <img id="modalQrImg" src="" alt="QR Code">
-            <div id="modalDetails" class="modal-details">
-                </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-download" onclick="downloadQr()">⬇️ 下載圖片</button>
-            <button class="btn-close-modal" onclick="closeQrModal()">關閉</button>
         </div>
     </div>
 </div>
@@ -260,8 +236,8 @@
                     const qrCodeLarge = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${item.R_ID}`;
                     const qrCodeThumb = `https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=${item.R_ID}`;
                     
-                    // 🌟 修正：將詳細資訊一起傳入 openQrModal 函式
-                    const qrCodeImg = isCancelled ? '-' : `<img src="${qrCodeThumb}" class="qr-thumbnail" title="點擊放大" onclick="window.openQrModal('${qrCodeLarge}', '${item.R_ID}', '${item.U_Name}', '${item.P_Name}', '${item.R_StartTime}')">`;
+                    // 🌟 回歸純粹的 onclick 參數 (只傳大圖網址與單號)
+                    const qrCodeImg = isCancelled ? '-' : `<img src="${qrCodeThumb}" class="qr-thumbnail" title="點擊放大" onclick="window.openQrModal('${qrCodeLarge}', '${item.R_ID}')">`;
 
                     const row = `<tr ${rowStyle}>
                         <td>${item.R_ID}</td>
@@ -287,18 +263,11 @@
         }
     };
 
-    // 🌟 優化版 Modal 邏輯：接收更多參數並顯示
-    window.openQrModal = function(imgUrl, resId, uName, pName, startTime) {
+    // 🌟 極簡版 Modal 邏輯
+    window.openQrModal = function(imgUrl, resId) {
         document.getElementById('modalTitle').innerText = '預約單號：' + resId;
         document.getElementById('modalQrImg').src = imgUrl; 
         
-        const detailsHtml = `
-            <p><span>預約時間</span> <strong>${startTime}</strong></p>
-            <p><span>客戶名稱</span> <strong>${uName}</strong></p>
-            <p><span>寵物名稱</span> <strong>${pName}</strong></p>
-        `;
-        document.getElementById('modalDetails').innerHTML = detailsHtml;
-
         const modal = document.getElementById('qrModal');
         modal.style.display = 'flex'; 
         setTimeout(() => modal.classList.add('show'), 10);
@@ -311,29 +280,6 @@
             modal.style.display = 'none'; 
             document.getElementById('modalQrImg').src = ''; 
         }, 300);
-    };
-
-    // 🌟 新增：下載 QR Code 圖片功能
-    window.downloadQr = function() {
-        const imgSrc = document.getElementById('modalQrImg').src;
-        const resIdText = document.getElementById('modalTitle').innerText;
-        const resId = resIdText.replace('預約單號：', '').trim();
-        
-        fetch(imgSrc)
-            .then(response => response.blob())
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = `QR_${resId}.png`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(() => {
-                window.open(imgSrc, '_blank');
-            });
     };
 
     function checkAndInitCalendar() {
