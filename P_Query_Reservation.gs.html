@@ -59,8 +59,7 @@
             <tr>
                 <th>預約ID</th>
                 <th>時間</th>
-                <th>客戶/寵物 ID</th>
-                <th>服務項目</th>
+                <th>客戶 / 寵物 名稱</th> <th>服務項目</th>
                 <th>美容師ID</th>
                 <th>狀態</th>
             </tr>
@@ -87,9 +86,9 @@
             slotDuration: '00:30:00',   // 每格時間間距 (30分鐘)
             expandRows: true,           // 自動延展高度
             eventClick: function(info) {
-                // 點擊行事曆事件時，跳出詳細資訊
                 const props = info.event.extendedProps;
-                alert(`預約詳細資訊：\n\n預約單號：${props.rId}\n服務項目：${info.event.title}\n客戶ID：${props.uId}\n寵物ID：${props.pId}\n美容師：${props.bId}`);
+                // ★ 這裡改顯示客戶名稱和寵物名稱
+                alert(`預約詳細資訊：\n\n預約單號：${props.rId}\n服務項目：${info.event.title}\n客戶名稱：${props.uName}\n寵物名稱：${props.pName}\n美容師：${props.bId}`);
             }
         });
         calendar.render();
@@ -125,21 +124,20 @@
             // --- 1. 更新行事曆資料 ---
             // 將 GAS 拿到的資料轉換為 FullCalendar 看得懂的 Event 物件
             const calendarEvents = data.map(item => {
-                // 判斷顏色：取消(紅)、已確認(綠)、未確認(藍)
-                let eventColor = '#007bff'; // 預設藍色(未確認)
-                if (item.R_Flag == "0") eventColor = '#dc3545'; // 紅色(已取消)
-                else if (item.R_Confirm == "1") eventColor = '#28a745'; // 綠色(已確認)
+                let eventColor = '#007bff'; 
+                if (item.R_Flag == "0") eventColor = '#dc3545'; 
+                else if (item.R_Confirm == "1") eventColor = '#28a745'; 
 
                 return {
                     id: item.R_ID,
-                    title: `${item.R_Server} (${item.B_ID})`, // 顯示在方塊上的文字
-                    start: `${item.R_Date}T${item.R_StartTime}:00`, // 組合出 ISO 格式時間
+                    title: `${item.R_Server} (${item.B_ID})`,
+                    start: `${item.R_Date}T${item.R_StartTime}:00`, 
                     end: `${item.R_Date}T${item.R_EndTime}:00`,
                     backgroundColor: eventColor,
                     borderColor: eventColor,
                     extendedProps: {
-                        uId: item.U_ID,
-                        pId: item.P_ID,
+                        uName: item.U_Name, // ★ 改接收 U_Name
+                        pName: item.P_Name, // ★ 改接收 P_Name
                         bId: item.B_ID,
                         rId: item.R_ID
                     }
@@ -162,8 +160,7 @@
                     const row = `<tr>
                         <td>${item.R_ID}</td>
                         <td>${item.R_StartTime} - ${item.R_EndTime}</td>
-                        <td>${item.U_ID} / ${item.P_ID}</td>
-                        <td>${item.R_Server}</td>
+                        <td>${item.U_Name} / ${item.P_Name}</td> <td>${item.R_Server}</td>
                         <td>${item.B_ID}</td>
                         <td>${statusText}</td>
                     </tr>`;
@@ -183,3 +180,4 @@
 
 </body>
 </html>
+
