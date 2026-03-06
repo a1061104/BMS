@@ -167,13 +167,17 @@
                     
                     // ★ 修改點：如果已取消，整列套用刪除線與灰色字體樣式
                     const rowStyle = isCancelled ? 'style="text-decoration: line-through; color: #999;"' : '';
-
+ 
                     const row = `<tr ${rowStyle}>
                         <td>${item.R_ID}</td>
+                        <td style="text-align:center; vertical-align:middle;">${qrCodeImg}</td>
                         <td>${item.R_StartTime} - ${item.R_EndTime}</td>
-                        <td>${item.U_Name} / ${item.P_Name}</td>
+                        <td>${item.U_Name}</td>
+                        <td>${item.U_Phone || ''}</td>
+                        <td>${item.P_Name}</td>
                         <td>${item.R_Server_Desc}</td>
                         <td>${item.B_ID}</td>
+                        <td>${item.B_Name}</td> 
                         <td>${statusText}</td>
                     </tr>`;
                     tbody.innerHTML += row;
@@ -192,6 +196,7 @@
 
 </body>
 </html>
+
 
 
 
