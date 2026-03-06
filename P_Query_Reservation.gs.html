@@ -45,8 +45,9 @@
     </div>
 
     <div class="legend" id="legend" style="display: none;">
-        <div class="legend-item"><div class="color-box" style="background-color: #28a745;"></div>已確認</div>
-        <div class="legend-item"><div class="color-box" style="background-color: #007bff;"></div>未確認</div>
+        <div class="legend-item"><div class="color-box" style="background-color: #fd7e14;"></div>客戶已預約</div>
+        <div class="legend-item"><div class="color-box" style="background-color: #007bff;"></div>店家已確認</div>
+        <div class="legend-item"><div class="color-box" style="background-color: #28a745;"></div>客戶已報到</div>
         <div class="legend-item"><div class="color-box" style="background-color: #dc3545;"></div>已取消</div>
     </div>
 
@@ -133,8 +134,17 @@
 
             // --- 1. 更新行事曆資料 ---
             const calendarEvents = data.filter(item => item.R_Flag != "0").map(item => {
-                let eventColor = '#007bff'; 
-                if (item.R_Confirm == "1") eventColor = '#28a745'; 
+                
+                let eventColor = '#fd7e14'; // 預設：橘色 (1. 客戶已預約：R_Confirm=0, R_CheckIn=0)
+
+                // 2. 店家已確認：R_Confirm=1, R_CheckIn=0
+                if (item.R_Confirm == "1" && item.R_CheckIn == "0") {
+                    eventColor = '#007bff'; // 藍色
+                } 
+                // 3. 客戶已報到：R_Confirm=1, R_CheckIn=1
+                else if (item.R_Confirm == "1" && item.R_CheckIn == "1") {
+                    eventColor = '#28a745'; // 綠色
+                }
 
                 return {
                     id: item.R_ID,
@@ -145,7 +155,7 @@
                     borderColor: eventColor,
                     extendedProps: {
                         uName: item.U_Name, 
-                        uPhone: item.U_Phone || "無資料", // ★ 接收電話資料
+                        uPhone: item.U_Phone || "無資料",
                         pName: item.P_Name, 
                         bId: item.B_ID,
                         rId: item.R_ID
@@ -160,15 +170,25 @@
 
             // --- 2. 更新下方表格 ---
             if (data.length === 0) {
-                // ★ 這裡改為 colspan="8"
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">此日期無預約紀錄</td></tr>';
             } else {
                 data.forEach(item => {
                     const isCancelled = item.R_Flag == "0";
-                    const statusText = isCancelled ? "已取消" : (item.R_Confirm == "1" ? "已確認" : "未確認");
+                    
+                    // 根據新邏輯判斷狀態文字
+                    let statusText = "未知狀態";
+                    if (isCancelled) {
+                        statusText = "已取消";
+                    } else if (item.R_Confirm == "0" && item.R_CheckIn == "0") {
+                        statusText = "客戶已預約";
+                    } else if (item.R_Confirm == "1" && item.R_CheckIn == "0") {
+                        statusText = "店家已確認";
+                    } else if (item.R_Confirm == "1" && item.R_CheckIn == "1") {
+                        statusText = "客戶已報到";
+                    }
+
                     const rowStyle = isCancelled ? 'style="text-decoration: line-through; color: #999;"' : '';
 
-                    // ★ 將姓名拆開，並加入聯絡電話欄位
                     const row = `<tr ${rowStyle}>
                         <td>${item.R_ID}</td>
                         <td>${item.R_StartTime} - ${item.R_EndTime}</td>
@@ -182,6 +202,7 @@
                     tbody.innerHTML += row;
                 });
             }
+            
             document.getElementById('resultTable').style.display = 'table';
             
         } catch (error) {
@@ -195,3 +216,4 @@
 
 </body>
 </html>
+
