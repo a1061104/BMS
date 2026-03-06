@@ -82,7 +82,7 @@
                 <th>聯絡電話</th> 
                 <th>寵物姓名</th> 
                 <th>服務項目</th>
-                <th>美容師ID</th>
+                <th>美容師名稱</th>
                 <th>狀態</th>
             </tr>
         </thead>
@@ -116,7 +116,7 @@
             expandRows: true,
             eventClick: function(info) {
                 const props = info.event.extendedProps;
-                alert(`預約詳細資訊：\n\n預約單號：${props.rId}\n服務項目：${info.event.title}\n客戶名稱：${props.uName}\n聯絡電話：${props.uPhone}\n寵物名稱：${props.pName}\n美容師：${props.bId}`);
+                alert(`預約詳細資訊：\n\n預約單號：${props.rId}\n服務項目：${info.event.title}\n客戶名稱：${props.uName}\n聯絡電話：${props.uPhone}\n寵物名稱：${props.pName}\n美容師：${props.bName}`);
             }
         });
         calendar.render();
@@ -174,7 +174,7 @@
                         uName: item.U_Name, 
                         uPhone: item.U_Phone || "無資料",
                         pName: item.P_Name, 
-                        bId: item.B_ID,
+                        bName: item.B_Name, // ★ 這裡改接收 B_Name
                         rId: item.R_ID
                     }
                 };
@@ -214,7 +214,7 @@
                     // 若已取消則不顯示 QR Code，否則綁定 onclick 事件呼叫 openQrModal()
                     const qrCodeImg = isCancelled ? '-' : `<img src="${qrCodeThumb}" class="qr-thumbnail" title="點擊放大" onclick="openQrModal('${qrCodeLarge}', '${item.R_ID}')">`;
 
-                    const row = `<tr ${rowStyle}>
+                   const row = `<tr ${rowStyle}>
                         <td>${item.R_ID}</td>
                         <td style="text-align:center; vertical-align:middle;">${qrCodeImg}</td>
                         <td>${item.R_StartTime} - ${item.R_EndTime}</td>
@@ -222,7 +222,7 @@
                         <td>${item.U_Phone || ''}</td>
                         <td>${item.P_Name}</td>
                         <td>${item.R_Server_Desc}</td>
-                        <td>${item.B_ID}</td>
+                        <td>${item.B_Name}</td> 
                         <td>${statusText}</td>
                     </tr>`;
                     tbody.innerHTML += row;
@@ -255,3 +255,4 @@
 
 </body>
 </html>
+
