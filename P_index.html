@@ -51,13 +51,10 @@
           <div class="list-group-item fw-bold bg-light text-primary">📍 報到功能</div>
           <a onclick="route('P_CheckIn_Booking')" class="list-group-item sub-item">A. 預約報到</a>
           <a onclick="route('P_CheckIn_WalkIn')" class="list-group-item sub-item">B. 未預約報到</a>
-          <div class="list-group-item fw-bold bg-light text-success">📅 單據維護</div>
+          <div class="list-group-item fw-bold bg-light text-success">📝 單據維護</div>
           <a onclick="route('P_Reservation')" class="list-group-item sub-item">A. 預約單</a>
+          <a onclick="route('P_Query_Reservation')" class="list-group-item sub-item">預約單日查詢 (新)</a>
           <a onclick="route('P_Order')" class="list-group-item sub-item">B. 訂單</a>
-          
-          <div class="list-group-item fw-bold bg-light text-success">📝 單據查詢</div>
-          <a onclick="route('P_Query_Reservation')" class="list-group-item sub-item">A. 預約單查詢</a>
-          
           <div class="list-group-item fw-bold bg-light text-secondary">🛠 資料維護</div>
           <a onclick="route('P_Customer')" class="list-group-item sub-item">A. 客戶資料維護</a>
           <a onclick="route('P_Servers')" class="list-group-item sub-item">B. 服務項目維護</a>
@@ -95,9 +92,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-      // ==========================================
-      // ★★★ 請將下方替換為您剛剛部署得到的 WebApp 網址 ★★★
-      // ==========================================
+      // 您的 WebApp 網址
       window.GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
 
       let homeHTML = "";
@@ -117,11 +112,9 @@
       function closeSidebar() {
         const sidebarEl = document.getElementById('sidebar');
         if (sidebarEl) {
-          // 如果 Bootstrap 尚未初始化這個實體，就先初始化它
           const bsOffcanvas = bootstrap.Offcanvas.getInstance(sidebarEl) || new bootstrap.Offcanvas(sidebarEl);
           bsOffcanvas.hide();
           
-          // 強制移除背景黑幕 (解決偶發性 backdrop 卡住的問題)
           const backdrops = document.querySelectorAll('.offcanvas-backdrop');
           backdrops.forEach(backdrop => backdrop.remove());
           document.body.classList.remove('offcanvas-open');
@@ -138,16 +131,14 @@
         refreshDashboard(); 
       }
 
-     // 載入儀表板資料 (呼叫 API)
+      // 載入儀表板資料 (呼叫 API)
       async function refreshDashboard() {
-        // 第一層保護：如果一開始就不在首頁，就不發送請求
         if (!document.getElementById('val-walk-in')) return; 
 
         try {
           const response = await fetch(`${GAS_API_URL}?action=getDashboardData`);
           const data = await response.json();
           
-          // ★★★ 第二層保護：因為 fetch 需要時間，等資料回來時，畫面可能已經切換了！ ★★★
           if (!document.getElementById('val-walk-in')) return;
           
           if(!data || data.error) {
@@ -174,13 +165,12 @@
         }
       }
 
-      // 更新未來五天的日期標籤
       function updateFutureLabels() {
         const days = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
         for (let i = 1; i <= 5; i++) {
           const labelEl = document.getElementById(`label-n${i}`);
           const dayEl = document.getElementById(`day-n${i}`);
-          if (!labelEl) continue; // 如果元素不存在就跳過
+          if (!labelEl) continue; 
 
           let t = new Date(); 
           t.setDate(t.getDate() + i);
@@ -192,7 +182,6 @@
         }
       }
 
-      // 右上角時鐘
       function startClock() {
         const d = document.getElementById('current-datetime');
         setInterval(() => {
@@ -203,7 +192,7 @@
         }, 1000);
       }
 
-      // SPA 換頁功能：從 GitHub 讀取其他的 HTML 檔案
+      // SPA 換頁功能
       async function route(pageName) {
         closeSidebar();
         document.getElementById('app').innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div><h5 class="mt-3 text-secondary">正在載入畫面...</h5></div>';
@@ -215,7 +204,16 @@
           const html = await response.text();
           document.getElementById('app').innerHTML = html;
           
-     // 輔助函數：依序執行 innerHTML 中的 <script>，確保外部套件載入完畢才執行內部腳本
+          // 強制執行載入 HTML 裡面的 JavaScript
+          executeScripts(document.getElementById('app'));
+        } catch (error) {
+          document.getElementById('app').innerHTML = `<div class="alert alert-danger m-4 shadow-sm border-0">系統錯誤：${error.message}</div>`;
+        }
+      }
+
+      // ==========================================
+      // ★ 最強大、最安全的腳本載入器 (已修正)
+      // ==========================================
       async function executeScripts(element) {
         const scripts = Array.from(element.querySelectorAll('script'));
         
@@ -223,19 +221,19 @@
           await new Promise((resolve) => {
             const newScript = document.createElement('script');
             
-            // 複製原本 script 的所有屬性 (例如 src)
+            // 複製原本 script 的所有屬性
             Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
             
             if (oldScript.src) {
-              // 【情況A】如果是外部套件 (有 src)：等待它 onload 載入完成後，才放行 (resolve) 執行下一個 script
+              // 外部套件：等待 onload 載入完成後才放行執行下一個 script
               newScript.onload = resolve;
               newScript.onerror = () => {
                 console.error(`套件載入失敗: ${oldScript.src}`);
-                resolve(); // 就算失敗也要放行，以免整個網頁卡死
+                resolve(); 
               };
               oldScript.parentNode.replaceChild(newScript, oldScript);
             } else {
-              // 【情況B】如果是內部程式碼：直接寫入並立刻放行
+              // 內部程式碼：直接寫入並立刻放行
               newScript.appendChild(document.createTextNode(oldScript.innerHTML));
               oldScript.parentNode.replaceChild(newScript, oldScript);
               resolve();
@@ -246,9 +244,3 @@
     </script>
   </body>
 </html>
-
-
-
-
-
-
