@@ -214,16 +214,12 @@
                     // 若已取消則不顯示 QR Code，否則綁定 onclick 事件呼叫 openQrModal()
                     const qrCodeImg = isCancelled ? '-' : `<img src="${qrCodeThumb}" class="qr-thumbnail" title="點擊放大" onclick="openQrModal('${qrCodeLarge}', '${item.R_ID}')">`;
 
-                   const row = `<tr ${rowStyle}>
+                    const row = `<tr ${rowStyle}>
                         <td>${item.R_ID}</td>
-                        <td style="text-align:center; vertical-align:middle;">${qrCodeImg}</td>
                         <td>${item.R_StartTime} - ${item.R_EndTime}</td>
-                        <td>${item.U_Name}</td>
-                        <td>${item.U_Phone || ''}</td>
-                        <td>${item.P_Name}</td>
+                        <td>${item.U_Name} / ${item.P_Name}</td>
                         <td>${item.R_Server_Desc}</td>
-                        <td>${item.B_Name}</td> 
-                        <td>${statusText}</td>
+                        <td>${item.B_Name}</td> <td>${statusText}</td>
                     </tr>`;
                     tbody.innerHTML += row;
                 });
@@ -255,4 +251,5 @@
 
 </body>
 </html>
+
 
