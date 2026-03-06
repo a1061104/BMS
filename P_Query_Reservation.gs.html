@@ -130,14 +130,15 @@
 
                 return {
                     id: item.R_ID,
-                    title: `${item.R_Server} (${item.B_ID})`,
+                    // ★ 這裡改接 R_Server_Desc
+                    title: `${item.R_Server_Desc} (${item.B_ID})`, 
                     start: `${item.R_Date}T${item.R_StartTime}:00`, 
                     end: `${item.R_Date}T${item.R_EndTime}:00`,
                     backgroundColor: eventColor,
                     borderColor: eventColor,
                     extendedProps: {
-                        uName: item.U_Name, // ★ 改接收 U_Name
-                        pName: item.P_Name, // ★ 改接收 P_Name
+                        uName: item.U_Name, 
+                        pName: item.P_Name, 
                         bId: item.B_ID,
                         rId: item.R_ID
                     }
@@ -180,4 +181,5 @@
 
 </body>
 </html>
+
 
