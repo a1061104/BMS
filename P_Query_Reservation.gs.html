@@ -59,6 +59,7 @@
         <thead>
             <tr>
                 <th>預約ID</th>
+                <th>QR Code</th>
                 <th>時間</th>
                 <th>客戶姓名</th> 
                 <th>聯絡電話</th> 
@@ -170,12 +171,12 @@
 
             // --- 2. 更新下方表格 ---
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">此日期無預約紀錄</td></tr>';
+                // ★ 這裡改為 colspan="9"
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">此日期無預約紀錄</td></tr>';
             } else {
                 data.forEach(item => {
                     const isCancelled = item.R_Flag == "0";
                     
-                    // 根據新邏輯判斷狀態文字
                     let statusText = "未知狀態";
                     if (isCancelled) {
                         statusText = "已取消";
@@ -189,9 +190,13 @@
 
                     const rowStyle = isCancelled ? 'style="text-decoration: line-through; color: #999;"' : '';
 
+                    // ★ 產生 QR Code 圖片 (設定大小為 80x80)，並加入點擊可開新視窗放大的功能
+                    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${item.R_ID}`;
+                    const qrCodeImg = isCancelled ? '-' : `<img src="${qrCodeUrl}" alt="QR Code" style="width: 40px; height: 40px; cursor: pointer;" title="點擊放大" onclick="window.open('${qrCodeUrl}')">`;
+
                     const row = `<tr ${rowStyle}>
                         <td>${item.R_ID}</td>
-                        <td>${item.R_StartTime} - ${item.R_EndTime}</td>
+                        <td style="text-align:center; vertical-align:middle;">${qrCodeImg}</td> <td>${item.R_StartTime} - ${item.R_EndTime}</td>
                         <td>${item.U_Name}</td>
                         <td>${item.U_Phone || ''}</td>
                         <td>${item.P_Name}</td>
@@ -216,4 +221,5 @@
 
 </body>
 </html>
+
 
