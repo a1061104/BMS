@@ -121,6 +121,17 @@
                 return;
             }
 
+            // ==========================================
+            // ★ 新增這一段：依據預約開始時間 (R_StartTime) 進行排序
+            // ==========================================
+            data.sort((a, b) => {
+                // 為了避免遇到空值導致錯誤，先做個簡單防護
+                if (!a.R_StartTime) return 1;
+                if (!b.R_StartTime) return -1;
+                // 利用 localeCompare 進行字串比對 (例如 "09:00" 會排在 "14:30" 前面)
+                return a.R_StartTime.localeCompare(b.R_StartTime);
+            });
+
             // --- 1. 更新行事曆資料 ---
             // 將 GAS 拿到的資料轉換為 FullCalendar 看得懂的 Event 物件
             const calendarEvents = data.map(item => {
@@ -182,6 +193,7 @@
 
 </body>
 </html>
+
 
 
 
