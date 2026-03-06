@@ -3,33 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>預約單日查詢系統</title>
+    <title>預約單日行事曆系統</title>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f9f9f9; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .search-bar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
         input[type="date"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
         button { padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
         button:hover { background-color: #0056b3; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        
+        /* 行事曆容器設定 */
+        #calendar {
+            margin-top: 20px;
+            margin-bottom: 30px;
+            min-height: 600px;
+        }
+
+        /* 隱藏 FullCalendar 預設的頭部，因為我們有自己的日期搜尋器 */
+        .fc-header-toolbar { display: none !important; }
+
+        /* 狀態顏色圖例 */
+        .legend { display: flex; gap: 15px; margin-bottom: 10px; font-size: 0.9em; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .color-box { width: 15px; height: 15px; border-radius: 3px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+        th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
         th { background-color: #f1f1f1; }
-        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.85em; }
-        .status-ok { background-color: #d4edda; color: #155724; }
-        .status-cancel { background-color: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>預約單日查詢</h2>
+    <h2>預約行事曆查詢 📅</h2>
+    
     <div class="search-bar">
         <label for="queryDate">選擇日期：</label>
         <input type="date" id="queryDate" required>
-        <button onclick="fetchReservations()">查詢</button>
+        <button onclick="fetchReservations()">查詢此日預約</button>
     </div>
 
-    <div id="loading" style="display: none;">資料載入中，請稍候...</div>
+    <div class="legend" id="legend" style="display: none;">
+        <div class="legend-item"><div class="color-box" style="background-color: #28a745;"></div>已確認</div>
+        <div class="legend-item"><div class="color-box" style="background-color: #007bff;"></div>未確認</div>
+        <div class="legend-item"><div class="color-box" style="background-color: #dc3545;"></div>已取消</div>
+    </div>
+
+    <div id="loading" style="display: none; color: #666;">資料載入與繪圖中，請稍候...</div>
+
+    <div id="calendar"></div>
 
     <table id="resultTable" style="display: none;">
         <thead>
@@ -40,17 +63,40 @@
                 <th>服務項目</th>
                 <th>美容師ID</th>
                 <th>狀態</th>
-                <th>確認/報到</th>
             </tr>
         </thead>
-        <tbody id="tableBody">
-            </tbody>
+        <tbody id="tableBody"></tbody>
     </table>
 </div>
 
 <script>
-    // ⚠️ 請將下方 URL 替換為您 GAS 部署為網頁應用程式後的網址
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec";
+    // ⚠️ 請記得替換為您正確的 GAS 網頁應用程式 URL
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
+    
+    let calendar; // 儲存行事曆實例
+
+    // 初始化行事曆框架 (剛載入網頁時執行)
+    document.addEventListener('DOMContentLoaded', function() {
+        const calendarEl = document.getElementById('calendar');
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridDay', // 單日時間軸視圖
+            locale: 'zh-tw',            // 中文語系
+            allDaySlot: false,          // 隱藏「全天」區塊
+            slotMinTime: '08:00:00',    // 行事曆起始時間 (可依營業時間修改)
+            slotMaxTime: '22:00:00',    // 行事曆結束時間 (可依營業時間修改)
+            slotDuration: '00:30:00',   // 每格時間間距 (30分鐘)
+            expandRows: true,           // 自動延展高度
+            eventClick: function(info) {
+                // 點擊行事曆事件時，跳出詳細資訊
+                const props = info.event.extendedProps;
+                alert(`預約詳細資訊：\n\n預約單號：${props.rId}\n服務項目：${info.event.title}\n客戶ID：${props.uId}\n寵物ID：${props.pId}\n美容師：${props.bId}`);
+            }
+        });
+        calendar.render();
+
+        // 預設設定日期為今天，並自動查一次
+        document.getElementById('queryDate').value = new Date().toISOString().split('T')[0];
+    });
 
     async function fetchReservations() {
         const dateInput = document.getElementById('queryDate').value;
@@ -60,14 +106,14 @@
         }
 
         document.getElementById('loading').style.display = 'block';
+        document.getElementById('legend').style.display = 'none';
         document.getElementById('resultTable').style.display = 'none';
+        
         const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = ''; // 清空舊資料
+        tbody.innerHTML = ''; 
 
         try {
-            // 組裝 GET 請求 URL，與 code.gs 的設定呼應
             const targetUrl = `${GAS_WEB_APP_URL}?action=getReservationsByDate&date=${dateInput}`;
-            
             const response = await fetch(targetUrl);
             const data = await response.json();
 
@@ -76,27 +122,50 @@
                 return;
             }
 
+            // --- 1. 更新行事曆資料 ---
+            // 將 GAS 拿到的資料轉換為 FullCalendar 看得懂的 Event 物件
+            const calendarEvents = data.map(item => {
+                // 判斷顏色：取消(紅)、已確認(綠)、未確認(藍)
+                let eventColor = '#007bff'; // 預設藍色(未確認)
+                if (item.R_Flag == "0") eventColor = '#dc3545'; // 紅色(已取消)
+                else if (item.R_Confirm == "1") eventColor = '#28a745'; // 綠色(已確認)
+
+                return {
+                    id: item.R_ID,
+                    title: `${item.R_Server} (${item.B_ID})`, // 顯示在方塊上的文字
+                    start: `${item.R_Date}T${item.R_StartTime}:00`, // 組合出 ISO 格式時間
+                    end: `${item.R_Date}T${item.R_EndTime}:00`,
+                    backgroundColor: eventColor,
+                    borderColor: eventColor,
+                    extendedProps: {
+                        uId: item.U_ID,
+                        pId: item.P_ID,
+                        bId: item.B_ID,
+                        rId: item.R_ID
+                    }
+                };
+            });
+
+            // 將行事曆移動到查詢的日期
+            calendar.gotoDate(dateInput);
+            // 清空舊事件，加入新事件
+            calendar.removeAllEvents();
+            calendar.addEventSource(calendarEvents);
+            document.getElementById('legend').style.display = 'flex';
+
+            // --- 2. 更新下方表格 (保留給需要看清單的人) ---
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">此日期無預約紀錄</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">此日期無預約紀錄</td></tr>';
             } else {
                 data.forEach(item => {
-                    // 處理狀態標籤的顯示邏輯
-                    const isCancelled = item.R_Flag == "0";
-                    const statusHtml = `<span class="status-badge ${isCancelled ? 'status-cancel' : 'status-ok'}">
-                        ${isCancelled ? '已取消' : '有效'}
-                    </span>`;
-                    
-                    const confirmText = item.R_Confirm == "1" ? "已確認" : "未確認";
-                    const checkInText = item.R_CheckIn == "1" ? "已報到" : "未報到";
-
+                    const statusText = item.R_Flag == "0" ? "已取消" : (item.R_Confirm == "1" ? "已確認" : "未確認");
                     const row = `<tr>
                         <td>${item.R_ID}</td>
                         <td>${item.R_StartTime} - ${item.R_EndTime}</td>
                         <td>${item.U_ID} / ${item.P_ID}</td>
                         <td>${item.R_Server}</td>
                         <td>${item.B_ID}</td>
-                        <td>${statusHtml}</td>
-                        <td>${confirmText} / ${checkInText}</td>
+                        <td>${statusText}</td>
                     </tr>`;
                     tbody.innerHTML += row;
                 });
@@ -105,16 +174,12 @@
             
         } catch (error) {
             console.error("Fetch Error:", error);
-            alert("連線失敗，請檢查網頁主控台 (Console)");
+            alert("連線失敗，請檢查網址是否正確，或查看網頁主控台 (Console)");
         } finally {
             document.getElementById('loading').style.display = 'none';
         }
     }
-
-    // 預設將日期設定為今天
-    document.getElementById('queryDate').value = new Date().toISOString().split('T')[0];
 </script>
 
 </body>
-
 </html>
