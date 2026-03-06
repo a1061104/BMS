@@ -121,27 +121,21 @@
                 return;
             }
 
-            // ==========================================
-            // ★ 新增這一段：依據預約開始時間 (R_StartTime) 進行排序
-            // ==========================================
+            // --- 排序：依據預約開始時間 (R_StartTime) 進行排序 ---
             data.sort((a, b) => {
-                // 為了避免遇到空值導致錯誤，先做個簡單防護
                 if (!a.R_StartTime) return 1;
                 if (!b.R_StartTime) return -1;
-                // 利用 localeCompare 進行字串比對 (例如 "09:00" 會排在 "14:30" 前面)
                 return a.R_StartTime.localeCompare(b.R_StartTime);
             });
 
             // --- 1. 更新行事曆資料 ---
-            // 將 GAS 拿到的資料轉換為 FullCalendar 看得懂的 Event 物件
-            const calendarEvents = data.map(item => {
-                let eventColor = '#007bff'; 
-                if (item.R_Flag == "0") eventColor = '#dc3545'; 
-                else if (item.R_Confirm == "1") eventColor = '#28a745'; 
+            // ★ 修改點：加上 .filter(item => item.R_Flag != "0")，過濾掉已取消的預約
+            const calendarEvents = data.filter(item => item.R_Flag != "0").map(item => {
+                let eventColor = '#007bff'; // 預設藍色 (未確認)
+                if (item.R_Confirm == "1") eventColor = '#28a745'; // 綠色 (已確認)
 
                 return {
                     id: item.R_ID,
-                    // ★ 這裡改接您想要的完整資訊
                     title: `${item.R_ID} | ${item.U_Name} | ${item.P_Name} | ${item.R_Server_Desc}`, 
                     start: `${item.R_Date}T${item.R_StartTime}:00`, 
                     end: `${item.R_Date}T${item.R_EndTime}:00`,
@@ -158,18 +152,23 @@
 
             // 將行事曆移動到查詢的日期
             calendar.gotoDate(dateInput);
-            // 清空舊事件，加入新事件
             calendar.removeAllEvents();
             calendar.addEventSource(calendarEvents);
             document.getElementById('legend').style.display = 'flex';
 
-            // --- 2. 更新下方表格 (保留給需要看清單的人) ---
+            // --- 2. 更新下方表格 ---
             if (data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">此日期無預約紀錄</td></tr>';
             } else {
                 data.forEach(item => {
-                    const statusText = item.R_Flag == "0" ? "已取消" : (item.R_Confirm == "1" ? "已確認" : "未確認");
-                    const row = `<tr>
+                    // 判斷是否已取消
+                    const isCancelled = item.R_Flag == "0";
+                    const statusText = isCancelled ? "已取消" : (item.R_Confirm == "1" ? "已確認" : "未確認");
+                    
+                    // ★ 修改點：如果已取消，整列套用刪除線與灰色字體樣式
+                    const rowStyle = isCancelled ? 'style="text-decoration: line-through; color: #999;"' : '';
+
+                    const row = `<tr ${rowStyle}>
                         <td>${item.R_ID}</td>
                         <td>${item.R_StartTime} - ${item.R_EndTime}</td>
                         <td>${item.U_Name} / ${item.P_Name}</td>
@@ -193,6 +192,7 @@
 
 </body>
 </html>
+
 
 
 
