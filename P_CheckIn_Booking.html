@@ -518,10 +518,9 @@
          alert("建立訂單失敗：" + data.msg);
        } else {
          alert("✅ 報到成功！已產生單號：" + data.orderId);
-         // 【關鍵跳轉語法】
-         // 使用 URL 參數傳遞 orderId 與 resId
-         // currentResId 是在搜尋時記錄的全域變數 [cite: 1]
-         window.location.href = 'P_Contract.html?orderId=' + data.orderId;
+         
+         // 【修改點】將跳轉目標改為首頁
+         window.location.href = 'P_index.html';
        }
      })
      .catch(function(err) {
@@ -630,6 +629,7 @@ function createOrder(data) {
 </script>
 </body>
 </html>
+
 
 
 
