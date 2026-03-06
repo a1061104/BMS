@@ -215,26 +215,38 @@
           const html = await response.text();
           document.getElementById('app').innerHTML = html;
           
-          // 強制執行載入 HTML 裡面的 JavaScript
-          executeScripts(document.getElementById('app'));
-        } catch (error) {
-          document.getElementById('app').innerHTML = `<div class="alert alert-danger m-4 shadow-sm border-0">系統錯誤：${error.message}</div>`;
+     // 輔助函數：依序執行 innerHTML 中的 <script>，確保外部套件載入完畢才執行內部腳本
+      async function executeScripts(element) {
+        const scripts = Array.from(element.querySelectorAll('script'));
+        
+        for (const oldScript of scripts) {
+          await new Promise((resolve) => {
+            const newScript = document.createElement('script');
+            
+            // 複製原本 script 的所有屬性 (例如 src)
+            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+            
+            if (oldScript.src) {
+              // 【情況A】如果是外部套件 (有 src)：等待它 onload 載入完成後，才放行 (resolve) 執行下一個 script
+              newScript.onload = resolve;
+              newScript.onerror = () => {
+                console.error(`套件載入失敗: ${oldScript.src}`);
+                resolve(); // 就算失敗也要放行，以免整個網頁卡死
+              };
+              oldScript.parentNode.replaceChild(newScript, oldScript);
+            } else {
+              // 【情況B】如果是內部程式碼：直接寫入並立刻放行
+              newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+              oldScript.parentNode.replaceChild(newScript, oldScript);
+              resolve();
+            }
+          });
         }
-      }
-
-      // 輔助函數：執行 innerHTML 中的 <script>
-      function executeScripts(element) {
-        const scripts = element.querySelectorAll('script');
-        scripts.forEach(oldScript => {
-          const newScript = document.createElement('script');
-          Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-          newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-          oldScript.parentNode.replaceChild(newScript, oldScript);
-        });
       }
     </script>
   </body>
 </html>
+
 
 
 
