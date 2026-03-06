@@ -59,7 +59,10 @@
             <tr>
                 <th>預約ID</th>
                 <th>時間</th>
-                <th>客戶 / 寵物 名稱</th> <th>服務項目</th>
+                <th>客戶姓名</th> 
+                <th>聯絡電話</th> 
+                <th>寵物姓名</th> 
+                <th>服務項目</th>
                 <th>美容師ID</th>
                 <th>狀態</th>
             </tr>
@@ -69,26 +72,26 @@
 </div>
 
 <script>
-    // ⚠️ 請記得替換為您正確的 GAS 網頁應用程式 URL
+    // 您正確的 GAS 網頁應用程式 URL
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyPKmtWJGdq9zqakegIi-GkWgBDij77CbnjeBz0EVFq5iZ8-ey_B_cpBDiywpYtRlY8DA/exec"; 
     
     let calendar; // 儲存行事曆實例
 
-    // 初始化行事曆框架 (剛載入網頁時執行)
+    // 初始化行事曆框架
     document.addEventListener('DOMContentLoaded', function() {
         const calendarEl = document.getElementById('calendar');
         calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'timeGridDay', // 單日時間軸視圖
-            locale: 'zh-tw',            // 中文語系
-            allDaySlot: false,          // 隱藏「全天」區塊
-            slotMinTime: '08:00:00',    // 行事曆起始時間 (可依營業時間修改)
-            slotMaxTime: '22:00:00',    // 行事曆結束時間 (可依營業時間修改)
-            slotDuration: '00:30:00',   // 每格時間間距 (30分鐘)
-            expandRows: true,           // 自動延展高度
+            initialView: 'timeGridDay',
+            locale: 'zh-tw',
+            allDaySlot: false,
+            slotMinTime: '08:00:00',
+            slotMaxTime: '22:00:00',
+            slotDuration: '00:30:00',
+            expandRows: true,
             eventClick: function(info) {
                 const props = info.event.extendedProps;
-                // ★ 這裡改顯示客戶名稱和寵物名稱
-                alert(`預約詳細資訊：\n\n預約單號：${props.rId}\n服務項目：${info.event.title}\n客戶名稱：${props.uName}\n寵物名稱：${props.pName}\n美容師：${props.bId}`);
+                // ★ 彈出視窗也加入聯絡電話
+                alert(`預約詳細資訊：\n\n預約單號：${props.rId}\n服務項目：${info.event.title}\n客戶名稱：${props.uName}\n聯絡電話：${props.uPhone}\n寵物名稱：${props.pName}\n美容師：${props.bId}`);
             }
         });
         calendar.render();
@@ -129,10 +132,9 @@
             });
 
             // --- 1. 更新行事曆資料 ---
-            // ★ 修改點：加上 .filter(item => item.R_Flag != "0")，過濾掉已取消的預約
             const calendarEvents = data.filter(item => item.R_Flag != "0").map(item => {
-                let eventColor = '#007bff'; // 預設藍色 (未確認)
-                if (item.R_Confirm == "1") eventColor = '#28a745'; // 綠色 (已確認)
+                let eventColor = '#007bff'; 
+                if (item.R_Confirm == "1") eventColor = '#28a745'; 
 
                 return {
                     id: item.R_ID,
@@ -143,6 +145,7 @@
                     borderColor: eventColor,
                     extendedProps: {
                         uName: item.U_Name, 
+                        uPhone: item.U_Phone || "無資料", // ★ 接收電話資料
                         pName: item.P_Name, 
                         bId: item.B_ID,
                         rId: item.R_ID
@@ -150,7 +153,6 @@
                 };
             });
 
-            // 將行事曆移動到查詢的日期
             calendar.gotoDate(dateInput);
             calendar.removeAllEvents();
             calendar.addEventSource(calendarEvents);
@@ -158,20 +160,21 @@
 
             // --- 2. 更新下方表格 ---
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">此日期無預約紀錄</td></tr>';
+                // ★ 這裡改為 colspan="8"
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">此日期無預約紀錄</td></tr>';
             } else {
                 data.forEach(item => {
-                    // 判斷是否已取消
                     const isCancelled = item.R_Flag == "0";
                     const statusText = isCancelled ? "已取消" : (item.R_Confirm == "1" ? "已確認" : "未確認");
-                    
-                    // ★ 修改點：如果已取消，整列套用刪除線與灰色字體樣式
                     const rowStyle = isCancelled ? 'style="text-decoration: line-through; color: #999;"' : '';
 
+                    // ★ 將姓名拆開，並加入聯絡電話欄位
                     const row = `<tr ${rowStyle}>
                         <td>${item.R_ID}</td>
                         <td>${item.R_StartTime} - ${item.R_EndTime}</td>
-                        <td>${item.U_Name} / ${item.P_Name}</td>
+                        <td>${item.U_Name}</td>
+                        <td>${item.U_Phone || ''}</td>
+                        <td>${item.P_Name}</td>
                         <td>${item.R_Server_Desc}</td>
                         <td>${item.B_ID}</td>
                         <td>${statusText}</td>
@@ -192,9 +195,3 @@
 
 </body>
 </html>
-
-
-
-
-
-
