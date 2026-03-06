@@ -239,7 +239,26 @@
         document.getElementById('modalQrImg').src = ''; 
     };
 
-    // 腳本注入完成後，立刻啟動畫面初始化
-    initView();
-})();
+    // 確保 FullCalendar 確實存在後再初始化 (解決 SPA 載入時間差或單獨開啟測試的問題)
+    function checkAndInitCalendar() {
+        if (typeof FullCalendar !== 'undefined') {
+            // 如果主框架已經載入完畢，直接執行
+            initView();
+        } else {
+            console.log("等待 FullCalendar 載入或動態補給...");
+            // 如果找不到，動態補上 CDN (方便你單獨開這個 HTML 測試，或解決主框架下載太慢的問題)
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js';
+            script.onload = function() {
+                initView(); // 確定 CDN 載入完成後才初始化
+            };
+            document.head.appendChild(script);
+        }
+    }
+
+    // 啟動檢查機制
+    checkAndInitCalendar();
+
+})(); // 這是 IIFE 的結尾符號，請保留
 </script>
+
